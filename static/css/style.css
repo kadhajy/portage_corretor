@@ -1,0 +1,16 @@
+.habilidade-row {
+  padding: .4rem .25rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.habilidade-row:last-child {
+  border-bottom: 0;
+}
+.habilidade-item-num {
+  display: inline-block;
+  min-width: 2.25rem;
+  color: var(--bs-secondary-color);
+  font-variant-numeric: tabular-nums;
+}
+.painel-total {
+  font-variant-numeric: tabular-nums;
+}

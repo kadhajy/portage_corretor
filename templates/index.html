@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Avaliação do Desenvolvimento Infantil — Guia Portage</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="bg-body-tertiary">
+  <nav class="navbar bg-primary" data-bs-theme="dark">
+    <div class="container">
+      <span class="navbar-brand mb-0 h1">Avaliação do Desenvolvimento Infantil — Guia Portage</span>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+
+    <section class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h5 card-title">Dados do paciente</h2>
+        <form id="form-paciente" class="row g-3">
+          <div class="col-md-6">
+            <label for="nome" class="form-label">Nome do paciente</label>
+            <input type="text" class="form-control" id="nome" required>
+          </div>
+          <div class="col-md-6">
+            <label for="data_nascimento" class="form-label">Data de nascimento</label>
+            <input type="date" class="form-control" id="data_nascimento" required>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label d-block">Como calcular os meses de vida?</label>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="modo" id="modo-hoje" value="hoje" checked>
+              <label class="form-check-label" for="modo-hoje">Usar a data de hoje</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="modo" id="modo-limite" value="data_limite">
+              <label class="form-check-label" for="modo-limite">Usar uma data limite</label>
+            </div>
+          </div>
+
+          <div class="col-md-6" id="wrapper-data-limite" hidden>
+            <label for="data_limite" class="form-label">Data limite</label>
+            <input type="date" class="form-control" id="data_limite">
+          </div>
+
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Carregar avaliação</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div id="alerta" class="alert" role="alert" hidden></div>
+
+    <section id="resumo" class="card shadow-sm mb-4" hidden>
+      <div class="card-body">
+        <h2 class="h5 card-title" id="resumo-nome"></h2>
+        <p class="mb-1" id="resumo-idade"></p>
+        <p class="mb-1 text-secondary" id="resumo-referencia"></p>
+        <p class="mb-0 fw-semibold" id="resumo-total-geral"></p>
+      </div>
+    </section>
+
+    <div id="paineis"></div>
+
+    <section id="tabela-resumo" class="card shadow-sm mb-4" hidden>
+      <div class="card-body">
+        <h2 class="h5 card-title">Somatório de pontos por seção</h2>
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Seção</th>
+                <th scope="col" class="text-end">Pontos</th>
+                <th scope="col" class="text-end">Máximo de pontos</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-resumo-corpo"></tbody>
+            <tfoot>
+              <tr class="fw-bold border-top">
+                <td>Total geral</td>
+                <td class="text-end" id="tabela-resumo-total">0</td>
+                <td class="text-end" id="tabela-resumo-total-maximo">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tabela-idade" class="card shadow-sm mb-4" hidden>
+      <div class="card-body">
+        <h2 class="h5 card-title">Idade de desenvolvimento estimada</h2>
+        <p id="tabela-idade-paciente" class="fw-semibold mb-2"></p>
+        <div class="table-responsive">
+          <table class="table table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Seção</th>
+                <th scope="col" class="text-end">Idade de desenvolvimento</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-idade-corpo"></tbody>
+          </table>
+        </div>
+
+        <div id="grafico-idade-wrapper" class="mt-4" style="position: relative; height: 360px;">
+          <canvas id="grafico-idade"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 card-title text-secondary text-uppercase">Ações</h2>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button type="button" id="btn-salvar-progresso" class="btn btn-outline-primary" disabled>
+            Salvar progresso (.json)
+          </button>
+          <button type="button" id="btn-restaurar-progresso" class="btn btn-outline-primary">
+            Restaurar progresso
+          </button>
+          <input type="file" id="input-restaurar-progresso" accept="application/json,.json" hidden>
+
+          <span class="vr mx-1 d-none d-sm-block"></span>
+
+          <button type="button" id="btn-relatorio-resumido" class="btn btn-success" disabled>
+            Relatório resumido (.docx)
+          </button>
+          <button type="button" id="btn-relatorio-completo" class="btn btn-outline-success" disabled>
+            Relatório completo (.docx)
+          </button>
+
+          <span id="acoes-status" class="text-secondary small ms-2"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
