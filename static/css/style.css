@@ -61,14 +61,22 @@
     margin: 0 0 .5rem;
     padding-left: 1.2rem;
   }
+  /* border-collapse: separate (não collapse): tabelas com bordas colapsadas
+     não fragmentam entre páginas no Chromium e acabam indo inteiras para a
+     página seguinte. As bordas são desenhadas nas células (direita/baixo)
+     mais topo/esquerda na própria tabela, resultando numa grade de 1px. */
   #relatorio-print table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin-bottom: .6rem;
+    border-top: 1px solid #999;
+    border-left: 1px solid #999;
   }
   #relatorio-print th,
   #relatorio-print td {
-    border: 1px solid #999;
+    border-right: 1px solid #999;
+    border-bottom: 1px solid #999;
     padding: 3px 6px;
     text-align: left;
     vertical-align: top;
@@ -100,10 +108,26 @@
   #relatorio-print .rel-assinatura p {
     margin: .15rem 0;
   }
-  #relatorio-print table,
   #relatorio-print img,
   #relatorio-print h2,
   #relatorio-print h3 {
+    break-inside: avoid;
+  }
+  /* Não deixa a quebra de página cair logo depois de um título, senão ele
+     fica sozinho no fim da página com a tabela na página seguinte. */
+  #relatorio-print h2,
+  #relatorio-print h3 {
+    break-after: avoid;
+  }
+  /* Tabelas longas (lista de habilidades) podem continuar na próxima página,
+     repetindo o cabeçalho e sem cortar uma linha ao meio. */
+  #relatorio-print table {
+    break-inside: auto;
+  }
+  #relatorio-print thead {
+    display: table-header-group;
+  }
+  #relatorio-print tr {
     break-inside: avoid;
   }
   @page {

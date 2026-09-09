@@ -42,8 +42,10 @@ function fmtNum(n) {
 
 const NUM_FAIXAS = 6;
 const IDADE_MAX_ANOS = 6;
-// Cores das barras por área, no mesmo esquema da planilha de referência.
-const CORES_AREAS = ["#5B9BD5", "#ED7D31", "#A5A5A5", "#FFC000", "#70AD47"];
+// Uma cor por área nas barras de "Idade de desenvolvimento". Linguagem
+// (índice 1) usa roxo para não colidir com o laranja da barra "Idade atual
+// do paciente" (#ED7D31).
+const CORES_AREAS = ["#5B9BD5", "#8064A2", "#A5A5A5", "#FFC000", "#70AD47"];
 
 // ===========================================================================
 // Regras de cálculo (aplicação estática — sem backend). Portadas do
@@ -257,11 +259,6 @@ function esc(valor) {
     /[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]),
   );
-}
-
-function dataHojeBr() {
-  const h = new Date();
-  return `${String(h.getDate()).padStart(2, "0")}/${String(h.getMonth() + 1).padStart(2, "0")}/${h.getFullYear()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -732,9 +729,7 @@ const rotuloValoresPlugin = {
 // Gráfico de colunas no mesmo molde de tabela_calculo_portage.xlsx:
 // uma barra de "idade de desenvolvimento" por área + a idade atual do
 // paciente como referência; eixo Y de 0 a 6 anos.
-function renderGraficoIdade(dados) {
-  if (typeof Chart === "undefined" || !graficoCanvas) return;
-
+function configGraficoIdade(dados, paraImpressao) {
   const labels = dados.areas.map((a) => a.label);
   const desenvolvimento = dados.areas.map((a) => Math.round(a.valor_bruto * 10) / 10);
 
@@ -743,7 +738,7 @@ function renderGraficoIdade(dados) {
     : 0;
   const idadeAtualSerie = labels.map(() => idadeAtualAnos);
 
-  const config = {
+  return {
     type: "bar",
     data: {
       labels,
@@ -761,8 +756,11 @@ function renderGraficoIdade(dados) {
       ],
     },
     options: {
-      responsive: true,
+      // No relatório o gráfico é desenhado num canvas próprio de tamanho fixo.
+      responsive: !paraImpressao,
       maintainAspectRatio: false,
+      // Sem animação o desenho é síncrono; a imagem do relatório já sai completa.
+      animation: false,
       scales: {
         y: {
           min: 0,
@@ -774,7 +772,32 @@ function renderGraficoIdade(dados) {
       },
       plugins: {
         title: { display: true, text: "Idade de desenvolvimento", color: "#757575", font: { size: 16 } },
-        legend: { position: "bottom" },
+        legend: {
+          position: "bottom",
+          // A série "Idade de desenvolvimento" tem uma cor por área; a legenda
+          // padrão mostraria só um quadradinho. Aqui listamos cada área com a
+          // sua cor + a barra de referência da idade atual.
+          labels: {
+            generateLabels(chart) {
+              const cores = chart.data.datasets[0].backgroundColor;
+              const itens = chart.data.labels.map((texto, i) => ({
+                text: texto,
+                fillStyle: cores[i],
+                strokeStyle: cores[i],
+                lineWidth: 0,
+              }));
+              const ref = chart.data.datasets[1];
+              itens.push({
+                text: ref.label,
+                fillStyle: ref.backgroundColor,
+                strokeStyle: ref.backgroundColor,
+                lineWidth: 0,
+              });
+              return itens;
+            },
+          },
+          onClick() {},
+        },
         tooltip: {
           callbacks: {
             label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(1)} ano(s)`,
@@ -784,10 +807,34 @@ function renderGraficoIdade(dados) {
     },
     plugins: [fundoBrancoPlugin, rotuloValoresPlugin],
   };
+}
 
+function renderGraficoIdade(dados) {
+  if (typeof Chart === "undefined" || !graficoCanvas) return;
   if (graficoIdade) graficoIdade.destroy();
-  graficoIdade = new Chart(graficoCanvas, config);
+  graficoIdade = new Chart(graficoCanvas, configGraficoIdade(dados, false));
   if (graficoWrapper) graficoWrapper.hidden = false;
+}
+
+// Gera o PNG do gráfico num canvas próprio de tamanho fixo, sem depender do
+// estado ou da visibilidade do gráfico da tela — assim o relatório sai com o
+// gráfico completo já na primeira geração.
+function imagemGraficoIdade(dados) {
+  if (typeof Chart === "undefined" || !dados || !dados.areas || !dados.areas.length) {
+    return "";
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = 450;
+  const chart = new Chart(canvas, configGraficoIdade(dados, true));
+  // Força o desenho síncrono no canvas: sem isso o Chart.js pode adiar o
+  // primeiro draw para o próximo frame e o toBase64Image() sai em branco
+  // (o gráfico só aparecia na 2ª geração do relatório).
+  chart.update("none");
+  chart.draw();
+  const img = chart.toBase64Image("image/png", 1);
+  chart.destroy();
+  return img;
 }
 
 // --- Relatório (impressão / PDF) --------------------------------------
@@ -828,7 +875,7 @@ function montarRelatorioImpresso(tipo) {
 
   const totalPontos = areas.reduce((s, a) => s + a.pontos, 0);
   const totalMaximo = areas.reduce((s, a) => s + a.maximo, 0);
-  const graficoImg = graficoIdade ? graficoIdade.toBase64Image("image/png", 1) : "";
+  const graficoImg = imagemGraficoIdade(calcularResultado(coletarPontosPorFaixa()));
 
   const linhasResumo = areas
     .map((a) => `<tr><td>${esc(a.label)}</td><td>${fmtNum(a.pontos)}</td><td>${a.maximo}</td></tr>`)
@@ -849,9 +896,8 @@ function montarRelatorioImpresso(tipo) {
     <ul>
       <li>Nome: ${esc(dados.nome)}</li>
       <li>Data de nascimento: ${formatarData(dados.data_nascimento)}</li>
-      <li>Data de referência: ${esc(dataRef)}</li>
+      <li>Data de avaliação: ${esc(dataRef)}</li>
       <li>Idade: ${dados.anos} ano(s) e ${dados.meses_restantes} mês(es) — ${dados.meses_de_vida} meses de vida</li>
-      <li>Relatório gerado em: ${dataHojeBr()}</li>
     </ul>`;
 
   if (dados.idade_excede_limite) {
@@ -910,13 +956,31 @@ function montarRelatorioImpresso(tipo) {
   relatorioPrint.innerHTML = html;
 }
 
+// Espera as imagens do container terminarem de decodificar. Imagens data: URI
+// carregam de forma assíncrona; sem esperar, a 1ª geração do relatório saía
+// sem o gráfico (só aparecia ao gerar de novo, já com a imagem em cache).
+function aguardarImagens(container) {
+  const imgs = Array.from(container.querySelectorAll("img"));
+  return Promise.all(
+    imgs.map((img) => {
+      if (img.complete && img.naturalWidth) return Promise.resolve();
+      const carregou = new Promise((resolve) => {
+        img.addEventListener("load", resolve, { once: true });
+        img.addEventListener("error", resolve, { once: true });
+      });
+      return img.decode().catch(() => carregou);
+    }),
+  );
+}
+
 // Abre a caixa de impressão do navegador com o relatório; o usuário escolhe
 // "Salvar como PDF". O título da aba vira o nome sugerido do arquivo.
-function imprimirRelatorio(tipo) {
+async function imprimirRelatorio(tipo) {
   if (!ultimaAvaliacao || !ultimaAvaliacao.avaliavel) return;
 
   lembrarMarcacoesRenderizadas();
   montarRelatorioImpresso(tipo);
+  await aguardarImagens(relatorioPrint);
 
   const tituloOriginal = document.title;
   document.title = nomeBaseSaida();
