@@ -433,8 +433,7 @@ function renderizar(dados) {
     `Meses de vida: ${dados.meses_de_vida} ` +
     `(${dados.anos} ano(s) e ${dados.meses_restantes} mês(es))`;
   document.getElementById("resumo-referencia").textContent =
-    `Data de referência: ${formatarData(dados.data_referencia)} ` +
-    `(${dados.modo === "data_limite" ? "data limite informada" : "data de hoje"})`;
+    `Data de referência: ${formatarData(dados.data_referencia)}`;
   resumo.hidden = false;
 
   tabelaIdadePaciente.textContent =
