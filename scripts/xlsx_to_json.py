@@ -1,7 +1,9 @@
 """Converte tabela_portage.xlsx em data/portage.json.
 
-Cada planilha do .xlsx vira uma "área" avaliada. Linhas sem conteúdo na
-coluna `habilidade` são ignoradas. Rode a partir da raiz do projeto:
+Utilitário opcional: a aplicação usa apenas data/portage.json. A planilha
+`tabela_portage.xlsx` não faz parte do repositório; para regenerar o JSON,
+coloque-a na raiz do projeto (cada planilha vira uma "área"; linhas sem
+conteúdo na coluna `habilidade` são ignoradas) e rode a partir da raiz:
 
     python scripts/xlsx_to_json.py
 """

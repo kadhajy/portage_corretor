@@ -26,7 +26,9 @@ from flask import Flask, jsonify, render_template, request, send_file
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data" / "portage.json"
 
-# Idade máxima avaliável: 6 anos completos = 72 meses de vida.
+# Limite de idade previsto pelo Guia Portage: 6 anos = 72 meses de vida.
+# Pacientes acima disso ainda podem ser avaliados, mas a página exibe um
+# aviso de que a idade superou o limite do teste.
 MAX_MESES = 72
 
 # --- Cálculo da idade de desenvolvimento -----------------------------------
@@ -165,7 +167,7 @@ def avaliacao():
         return jsonify({"erro": "A data de referência é anterior à data de nascimento."}), 400
 
     meses = meses_de_vida(nascimento, referencia)
-    avaliavel = meses < MAX_MESES
+    idade_excede_limite = meses >= MAX_MESES
 
     resposta = {
         "nome": nome,
@@ -176,16 +178,19 @@ def avaliacao():
         "anos": meses // 12,
         "meses_restantes": meses % 12,
         "idade_maxima_meses": MAX_MESES,
-        "avaliavel": avaliavel,
+        "avaliavel": True,
+        "idade_excede_limite": idade_excede_limite,
+        "areas": filtrar_areas(meses),
     }
 
-    if avaliavel:
-        resposta["areas"] = filtrar_areas(meses)
-    else:
+    if idade_excede_limite:
         resposta["mensagem"] = (
-            "A idade máxima para avaliar um paciente é de 6 anos (72 meses de vida). "
-            "Este paciente já não pode mais ser avaliado. "
-            "Você pode informar uma data limite para que os meses de vida se enquadrem no aceitável."
+            f"O paciente tem {meses} meses de vida "
+            f"({meses // 12} ano(s) e {meses % 12} mês(es)), acima do limite de "
+            "71 meses (6 anos) previsto pelo Guia Portage. A avaliação continua "
+            "disponível, mas os resultados podem não refletir com precisão o "
+            "desenvolvimento nesta faixa etária. Se preferir, informe uma data "
+            "limite para enquadrar a idade dentro do intervalo do teste."
         )
 
     return jsonify(resposta)
@@ -251,18 +256,56 @@ def _nome_arquivo_saida(paciente: dict, extensao: str) -> str:
     return f"ava_{_nome_paciente_limpo(paciente.get('nome'))}_{data}.{extensao}"
 
 
+_ROTULOS_RESPOSTA = {"sim": "Sim", "av": "Às vezes", "nao": "Não"}
+
+
+def _valor_resposta(h: dict) -> float:
+    """Pontuação de uma habilidade: Sim = 1, Às vezes = 0,5, Não = 0.
+
+    Aceita o formato atual (`resposta`: "sim"/"av"/"nao"), um `valor` numérico
+    explícito ou o formato antigo com `realiza` booleano.
+    """
+    r = h.get("resposta")
+    if r == "sim":
+        return 1.0
+    if r == "av":
+        return 0.5
+    if r == "nao":
+        return 0.0
+    if h.get("valor") is not None:
+        try:
+            return float(h["valor"])
+        except (TypeError, ValueError):
+            return 0.0
+    return 1.0 if h.get("realiza") else 0.0
+
+
+def _rotulo_resposta(h: dict) -> str:
+    r = h.get("resposta")
+    if r in _ROTULOS_RESPOSTA:
+        return _ROTULOS_RESPOSTA[r]
+    return "Sim" if h.get("realiza") else "Não"
+
+
+def _fmt_num(n: float) -> str:
+    """Número em pt-BR: inteiro sem casas, fracionário com uma casa e vírgula."""
+    n = float(n)
+    return str(int(n)) if n.is_integer() else f"{n:.1f}".replace(".", ",")
+
+
 def _calcular_area(area: dict) -> dict:
     """Recebe uma área com habilidades marcadas e devolve os números do relatório."""
     key = area.get("key")
     habilidades = area.get("habilidades") or []
-    pontos = sum(1 for h in habilidades if h.get("realiza"))
+    pontos = sum(_valor_resposta(h) for h in habilidades)
 
     por_faixa = [0.0] * len(FAIXAS)
     for h in habilidades:
-        if h.get("realiza"):
+        valor = _valor_resposta(h)
+        if valor:
             fi = int(h.get("faixa") or 0)
             if 0 <= fi < len(FAIXAS):
-                por_faixa[fi] += 1
+                por_faixa[fi] += valor
 
     divisores = DIVISORES_IDADE_DESENV.get(key)
     idade = idade_desenvolvimento(por_faixa, divisores)["anos"] if divisores else None
@@ -311,11 +354,11 @@ def _montar_docx(tipo: str, paciente: dict, areas: list[dict], grafico_b64: str)
         total_maximo += area["maximo"]
         c = t1.add_row().cells
         c[0].text = area["label"]
-        c[1].text = str(area["pontos"])
+        c[1].text = _fmt_num(area["pontos"])
         c[2].text = str(area["maximo"])
     c = t1.add_row().cells
     c[0].text = "Total geral"
-    c[1].text = str(total_pontos)
+    c[1].text = _fmt_num(total_pontos)
     c[2].text = str(total_maximo)
 
     # Tabela 2 - idade de desenvolvimento estimada
@@ -355,13 +398,13 @@ def _montar_docx(tipo: str, paciente: dict, areas: list[dict], grafico_b64: str)
                 continue
             tab = doc.add_table(rows=1, cols=3)
             tab.style = "Table Grid"
-            for i, titulo in enumerate(("Item", "Habilidade", "Realiza")):
+            for i, titulo in enumerate(("Item", "Habilidade", "Resposta")):
                 tab.rows[0].cells[i].text = titulo
             for h in habilidades:
                 c = tab.add_row().cells
                 c[0].text = str(h.get("item") or "")
                 c[1].text = h.get("habilidade") or ""
-                c[2].text = "Sim" if h.get("realiza") else "Não"
+                c[2].text = _rotulo_resposta(h)
 
     # Campo de assinatura do profissional responsável
     doc.add_paragraph()

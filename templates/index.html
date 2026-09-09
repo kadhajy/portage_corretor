@@ -47,7 +47,8 @@
           </div>
 
           <div class="col-12">
-            <button type="submit" class="btn btn-primary">Carregar avaliação</button>
+            <button type="submit" class="btn btn-outline-secondary">Recarregar</button>
+            <span class="form-text ms-2">A avaliação carrega sozinha ao preencher os campos.</span>
           </div>
         </form>
       </div>
@@ -61,6 +62,16 @@
         <p class="mb-1" id="resumo-idade"></p>
         <p class="mb-1 text-secondary" id="resumo-referencia"></p>
         <p class="mb-0 fw-semibold" id="resumo-total-geral"></p>
+      </div>
+    </section>
+
+    <section id="aviso-idade" class="card border-warning border-2 bg-warning-subtle shadow-sm mb-4" hidden>
+      <div class="card-body d-flex gap-3 align-items-start p-4">
+        <span class="fs-1 lh-1" aria-hidden="true">⚠️</span>
+        <div>
+          <h2 class="h4 card-title text-warning-emphasis">Idade acima do limite do teste</h2>
+          <p class="mb-0 fs-6" id="aviso-idade-texto"></p>
+        </div>
       </div>
     </section>
 
@@ -132,6 +143,13 @@
           </button>
           <button type="button" id="btn-relatorio-completo" class="btn btn-outline-success" disabled>
             Relatório completo (.docx)
+          </button>
+
+          <span class="vr mx-1 d-none d-sm-block"></span>
+
+          <button type="button" id="btn-resetar-respostas" class="btn btn-outline-danger" disabled
+                  title="Zera todas as marcações das áreas avaliadas. Não altera os dados do paciente.">
+            Resetar respostas
           </button>
 
           <span id="acoes-status" class="text-secondary small ms-2"></span>

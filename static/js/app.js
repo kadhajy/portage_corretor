@@ -1,6 +1,8 @@
 "use strict";
 
 const form = document.getElementById("form-paciente");
+const inputNome = document.getElementById("nome");
+const inputDataNascimento = document.getElementById("data_nascimento");
 const wrapperDataLimite = document.getElementById("wrapper-data-limite");
 const inputDataLimite = document.getElementById("data_limite");
 const alerta = document.getElementById("alerta");
@@ -10,6 +12,8 @@ const tabelaResumo = document.getElementById("tabela-resumo");
 const tabelaResumoCorpo = document.getElementById("tabela-resumo-corpo");
 const tabelaResumoTotal = document.getElementById("tabela-resumo-total");
 const tabelaResumoTotalMaximo = document.getElementById("tabela-resumo-total-maximo");
+const avisoIdade = document.getElementById("aviso-idade");
+const avisoIdadeTexto = document.getElementById("aviso-idade-texto");
 const tabelaIdade = document.getElementById("tabela-idade");
 const tabelaIdadeCorpo = document.getElementById("tabela-idade-corpo");
 const tabelaIdadePaciente = document.getElementById("tabela-idade-paciente");
@@ -20,10 +24,20 @@ const btnRelatorioCompleto = document.getElementById("btn-relatorio-completo");
 const btnSalvarProgresso = document.getElementById("btn-salvar-progresso");
 const btnRestaurarProgresso = document.getElementById("btn-restaurar-progresso");
 const inputRestaurarProgresso = document.getElementById("input-restaurar-progresso");
+const btnResetarRespostas = document.getElementById("btn-resetar-respostas");
 const acoesStatus = document.getElementById("acoes-status");
 
 const PROGRESSO_APP_ID = "portage-avaliacao";
-const PROGRESSO_VERSAO = 1;
+const PROGRESSO_VERSAO = 2;
+
+// Pontuação de cada resposta possível de uma habilidade.
+const VALOR_RESPOSTA = { sim: 1, av: 0.5, nao: 0 };
+const RESPOSTA_PADRAO = "nao";
+
+// Número em pt-BR: inteiro sem casas, fracionário com uma casa e vírgula.
+function fmtNum(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+}
 
 const NUM_FAIXAS = 6;
 const IDADE_MAX_ANOS = 6;
@@ -39,6 +53,30 @@ const MODO_TESTE = true;
 let calculoIdadeTimer = null;
 let ultimaAvaliacao = null;
 let graficoIdade = null;
+
+// Respostas do usuário guardadas entre recarregamentos da avaliação (ex.: ao
+// mudar a data limite). Formato: { "<area>": { "<item>": "sim"|"av"|"nao" } }.
+// Só são zeradas pelo botão "Resetar respostas" ou ao restaurar um progresso.
+let marcacoesMemoria = {};
+
+function normalizarResposta(valor) {
+  if (valor === true) return "sim";
+  if (valor === false || valor == null) return "nao";
+  return valor in VALOR_RESPOSTA ? valor : "nao";
+}
+
+function registrarMarcacao(areaKey, item, valor) {
+  if (!marcacoesMemoria[areaKey]) marcacoesMemoria[areaKey] = {};
+  marcacoesMemoria[areaKey][item] = normalizarResposta(valor);
+}
+
+// Copia para a memória o estado atual de todos os grupos já renderizados,
+// sem apagar respostas de itens que não estão visíveis nesta faixa etária.
+function lembrarMarcacoesRenderizadas() {
+  Object.entries(coletarMarcacoes()).forEach(([areaKey, itens]) => {
+    Object.entries(itens).forEach(([item, valor]) => registrarMarcacao(areaKey, item, valor));
+  });
+}
 
 // Mostra/esconde o campo de data limite conforme o modo escolhido.
 form.querySelectorAll('input[name="modo"]').forEach((radio) => {
@@ -64,14 +102,40 @@ function formatarData(iso) {
   return `${d}/${m}/${a}`;
 }
 
-form.addEventListener("submit", async (evento) => {
-  evento.preventDefault();
+// Assinatura dos campos do formulário já carregados, para evitar recarregar
+// a avaliação com os mesmos dados enquanto o usuário continua digitando.
+let autoCarregarTimer = null;
+let assinaturaCarregada = null;
+
+function modoAtual() {
+  return form.querySelector('input[name="modo"]:checked').value;
+}
+
+function assinaturaFormulario() {
+  return JSON.stringify({
+    nome: inputNome.value.trim(),
+    nascimento: inputDataNascimento.value,
+    modo: modoAtual(),
+    data_limite: inputDataLimite.value,
+  });
+}
+
+// O formulário está pronto para carregar: nome, data de nascimento e, no
+// modo "data limite", também a data limite.
+function formularioCompleto() {
+  if (!inputNome.value.trim() || !inputDataNascimento.value) return false;
+  if (modoAtual() === "data_limite" && !inputDataLimite.value) return false;
+  return true;
+}
+
+async function carregarAvaliacao() {
   limparAlerta();
+  assinaturaCarregada = assinaturaFormulario();
 
   const corpo = {
-    nome: document.getElementById("nome").value,
-    data_nascimento: document.getElementById("data_nascimento").value,
-    modo: form.querySelector('input[name="modo"]:checked').value,
+    nome: inputNome.value,
+    data_nascimento: inputDataNascimento.value,
+    modo: modoAtual(),
     data_limite: inputDataLimite.value,
   };
 
@@ -98,7 +162,27 @@ form.addEventListener("submit", async (evento) => {
   }
 
   renderizar(resposta);
+}
+
+// Carrega sozinho assim que o usuário termina de preencher, sem depender do
+// botão. Espera 500 ms após a última alteração e ignora dados repetidos.
+function agendarAutoCarregar() {
+  clearTimeout(autoCarregarTimer);
+  if (!formularioCompleto() || assinaturaFormulario() === assinaturaCarregada) return;
+  autoCarregarTimer = setTimeout(() => {
+    if (formularioCompleto() && assinaturaFormulario() !== assinaturaCarregada) {
+      carregarAvaliacao();
+    }
+  }, 500);
+}
+
+form.addEventListener("submit", (evento) => {
+  evento.preventDefault();
+  clearTimeout(autoCarregarTimer);
+  carregarAvaliacao();
 });
+form.addEventListener("input", agendarAutoCarregar);
+form.addEventListener("change", agendarAutoCarregar);
 
 // Habilita "Salvar progresso" e os relatórios apenas quando há uma
 // avaliação carregada e o paciente pode ser avaliado.
@@ -107,11 +191,17 @@ function setAcoesHabilitadas() {
   btnSalvarProgresso.disabled = !ok;
   btnRelatorioResumido.disabled = !ok;
   btnRelatorioCompleto.disabled = !ok;
+  btnResetarRespostas.disabled = !ok;
 }
 
 function renderizar(dados) {
+  // Guarda as respostas atuais antes de recriar os painéis, para não perder
+  // marcações quando a avaliação é recarregada (ex.: mudança de data limite).
+  lembrarMarcacoesRenderizadas();
+
   ultimaAvaliacao = dados;
   paineis.innerHTML = "";
+  avisoIdade.hidden = true;
   tabelaResumoCorpo.innerHTML = "";
   tabelaResumo.hidden = true;
   tabelaIdadeCorpo.innerHTML = "";
@@ -138,6 +228,13 @@ function renderizar(dados) {
 
   const totalGeralEl = document.getElementById("resumo-total-geral");
 
+  if (dados.idade_excede_limite) {
+    avisoIdadeTexto.textContent =
+      dados.mensagem ||
+      "A idade do paciente já superou o limite para se adequar ao teste.";
+    avisoIdade.hidden = false;
+  }
+
   if (!dados.avaliavel) {
     totalGeralEl.textContent = "";
     setAcoesHabilitadas();
@@ -145,12 +242,15 @@ function renderizar(dados) {
     return;
   }
 
-  totalGeralEl.textContent = "Total geral de habilidades marcadas: 0";
+  totalGeralEl.textContent = "Total geral de pontos: 0";
 
-  dados.areas.forEach((area) => {
+  (dados.areas || []).forEach((area) => {
     paineis.appendChild(criarPainel(area, totalGeralEl));
     tabelaResumoCorpo.appendChild(criarLinhaTabela(area));
   });
+
+  // Reaplica as respostas guardadas às habilidades que continuam visíveis.
+  aplicarMarcacoes(marcacoesMemoria);
 
   tabelaResumo.hidden = false;
   setAcoesHabilitadas();
@@ -173,7 +273,7 @@ function criarPainel(area, totalGeralEl) {
     <span class="fw-semibold">${area.label}</span>
     <div class="d-flex align-items-center gap-2">
       <span class="badge text-bg-primary painel-total">
-        Realiza: <span class="painel-soma">0</span> / ${area.total_habilidades}
+        Pontos: <span class="painel-soma">0</span> / ${area.total_habilidades}
       </span>
       <button class="btn btn-sm btn-outline-secondary btn-colapse" type="button"
               data-bs-toggle="collapse" data-bs-target="#${idCollapse}"
@@ -218,10 +318,17 @@ function criarPainel(area, totalGeralEl) {
     btnTeste.type = "button";
     btnTeste.className = "btn btn-sm btn-outline-danger test-only";
     btnTeste.textContent = "Marcar todas";
+    btnTeste.hidden = true; // ação mantida, mas invisível
+
     btnTeste.addEventListener("click", () => {
       const marcar = btnTeste.textContent === "Marcar todas";
-      card.querySelectorAll(".realiza-check").forEach((c) => (c.checked = marcar));
+      const alvo = marcar ? "sim" : "nao";
+      card.querySelectorAll(".resposta-grupo").forEach((grupo) => {
+        const radio = grupo.querySelector(`.resposta-radio[value="${alvo}"]`);
+        if (radio) radio.checked = true;
+      });
       btnTeste.textContent = marcar ? "Desmarcar todas" : "Marcar todas";
+      lembrarMarcacoesRenderizadas();
       atualizarSomaPainel(card);
       atualizarTotalGeral(totalGeralEl);
       atualizarTabelaResumo();
@@ -238,21 +345,40 @@ function criarLinhaHabilidade(areaKey, hab, card, totalGeralEl) {
   const row = document.createElement("div");
   row.className = "habilidade-row d-flex align-items-start gap-2";
 
-  const idCheck = `chk-${areaKey}-${hab.item}`;
+  const grupo = `resp-${areaKey}-${hab.item}`;
+  const opcoes = [
+    ["sim", "Sim", "btn-outline-success"],
+    ["av", "Às vezes", "btn-outline-warning"],
+    ["nao", "Não", "btn-outline-danger"],
+  ];
+  const botoes = opcoes
+    .map(
+      ([valor, rotulo, classe]) => `
+      <input type="radio" class="btn-check resposta-radio" name="${grupo}"
+             id="${grupo}-${valor}" value="${valor}" autocomplete="off"
+             data-faixa="${hab.faixa}" data-valor="${VALOR_RESPOSTA[valor]}"
+             ${valor === RESPOSTA_PADRAO ? "checked" : ""}>
+      <label class="btn btn-sm ${classe}" for="${grupo}-${valor}">${rotulo}</label>`,
+    )
+    .join("");
+
   row.innerHTML = `
-    <label class="flex-grow-1" for="${idCheck}">
+    <div class="flex-grow-1">
       <span class="habilidade-item-num">${hab.item}.</span>${hab.habilidade}
-    </label>
-    <div class="form-check mt-1 ps-0 ms-2">
-      <input class="form-check-input realiza-check ms-0" type="checkbox"
-             id="${idCheck}" data-faixa="${hab.faixa}">
+    </div>
+    <div class="btn-group btn-group-sm resposta-grupo" role="group"
+         data-item="${hab.item}" aria-label="Resposta para a habilidade ${hab.item}">
+      ${botoes}
     </div>`;
 
-  row.querySelector(".realiza-check").addEventListener("change", () => {
-    atualizarSomaPainel(card);
-    atualizarTotalGeral(totalGeralEl);
-    atualizarTabelaResumo();
-    agendarCalculoIdade();
+  row.querySelectorAll(".resposta-radio").forEach((radio) => {
+    radio.addEventListener("change", () => {
+      registrarMarcacao(areaKey, hab.item, radio.value);
+      atualizarSomaPainel(card);
+      atualizarTotalGeral(totalGeralEl);
+      atualizarTabelaResumo();
+      agendarCalculoIdade();
+    });
   });
 
   return row;
@@ -268,19 +394,27 @@ function criarLinhaTabela(area) {
   return tr;
 }
 
-function somaMarcados(card) {
-  return card.querySelectorAll(".realiza-check:checked").length;
+// Soma dos pontos das habilidades de um painel (Sim = 1, Às vezes = 0,5).
+function somaPontos(card) {
+  let total = 0;
+  card.querySelectorAll(".resposta-radio:checked").forEach((radio) => {
+    total += Number(radio.dataset.valor) || 0;
+  });
+  return total;
 }
 
 function atualizarSomaPainel(card) {
-  const marcados = somaMarcados(card);
-  card.querySelector(".painel-soma").textContent = marcados;
-  card.querySelector(".painel-soma-rodape").textContent = marcados;
+  const pontos = fmtNum(somaPontos(card));
+  card.querySelector(".painel-soma").textContent = pontos;
+  card.querySelector(".painel-soma-rodape").textContent = pontos;
 }
 
 function atualizarTotalGeral(totalGeralEl) {
-  const total = document.querySelectorAll("#paineis .realiza-check:checked").length;
-  totalGeralEl.textContent = `Total geral de habilidades marcadas: ${total}`;
+  let total = 0;
+  document.querySelectorAll("#paineis .resposta-radio:checked").forEach((radio) => {
+    total += Number(radio.dataset.valor) || 0;
+  });
+  totalGeralEl.textContent = `Total geral de pontos: ${fmtNum(total)}`;
 }
 
 function atualizarTabelaResumo() {
@@ -288,30 +422,31 @@ function atualizarTabelaResumo() {
   let totalMaximo = 0;
 
   paineis.querySelectorAll(".card").forEach((card) => {
-    const pontos = somaMarcados(card);
+    const pontos = somaPontos(card);
     totalPontos += pontos;
 
     const linha = tabelaResumoCorpo.querySelector(`tr[data-area="${card.dataset.area}"]`);
     if (linha) {
-      linha.querySelector(".tabela-pontos").textContent = pontos;
+      linha.querySelector(".tabela-pontos").textContent = fmtNum(pontos);
       totalMaximo += Number(linha.querySelector(".tabela-maximo").textContent) || 0;
     }
   });
 
-  tabelaResumoTotal.textContent = totalPontos;
+  tabelaResumoTotal.textContent = fmtNum(totalPontos);
   tabelaResumoTotalMaximo.textContent = totalMaximo;
 }
 
 // --- Idade de desenvolvimento --------------------------------------------
 
-// Conta as habilidades marcadas por área e por faixa etária (índice 0 a 5).
+// Soma os pontos por área e por faixa etária (índice 0 a 5).
 function coletarPontosPorFaixa() {
   const pontos = {};
   paineis.querySelectorAll(".card").forEach((card) => {
     const faixas = new Array(NUM_FAIXAS).fill(0);
-    card.querySelectorAll(".realiza-check:checked").forEach((check) => {
-      const faixa = Number(check.dataset.faixa);
-      if (faixa >= 0 && faixa < NUM_FAIXAS) faixas[faixa] += 1;
+    card.querySelectorAll(".resposta-radio:checked").forEach((radio) => {
+      const faixa = Number(radio.dataset.faixa);
+      const valor = Number(radio.dataset.valor) || 0;
+      if (faixa >= 0 && faixa < NUM_FAIXAS) faixas[faixa] += valor;
     });
     pontos[card.dataset.area] = faixas;
   });
@@ -368,21 +503,24 @@ const fundoBrancoPlugin = {
   },
 };
 
-// Rótulo com o valor (1 casa) acima das barras de "Idade de desenvolvimento".
+// Rótulo com o valor (1 casa) acima das barras de todos os conjuntos
+// ("Idade de desenvolvimento" e "Idade atual do paciente").
 const rotuloValoresPlugin = {
   id: "rotuloValores",
   afterDatasetsDraw(chart) {
     const { ctx } = chart;
-    const meta = chart.getDatasetMeta(0);
-    if (!meta || meta.hidden) return;
     ctx.save();
     ctx.font = "600 11px system-ui, -apple-system, sans-serif";
     ctx.fillStyle = "#333";
     ctx.textAlign = "center";
-    meta.data.forEach((barra, i) => {
-      const valor = chart.data.datasets[0].data[i];
-      if (valor == null) return;
-      ctx.fillText(Number(valor).toFixed(1), barra.x, barra.y - 4);
+    chart.data.datasets.forEach((dataset, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (!meta || meta.hidden) return;
+      meta.data.forEach((barra, i) => {
+        const valor = dataset.data[i];
+        if (valor == null) return;
+        ctx.fillText(Number(valor).toFixed(1), barra.x, barra.y - 4);
+      });
     });
     ctx.restore();
   },
@@ -451,22 +589,29 @@ function renderGraficoIdade(dados) {
 
 // --- Relatório (.docx) --------------------------------------------------
 
-// Reúne as áreas com a marcação atual de cada habilidade (checkbox "realiza").
+// Reúne as áreas com a resposta atual de cada habilidade (Sim / Às vezes / Não).
 function coletarAreasComMarcacao() {
   if (!ultimaAvaliacao || !ultimaAvaliacao.areas) return [];
   return ultimaAvaliacao.areas.map((area) => ({
     key: area.key,
     label: area.label,
     habilidades: area.habilidades.map((h) => {
-      const check = document.getElementById(`chk-${area.key}-${h.item}`);
+      const resposta = respostaSelecionada(area.key, h.item);
       return {
         item: h.item,
         habilidade: h.habilidade,
         faixa: h.faixa,
-        realiza: Boolean(check && check.checked),
+        resposta,
+        valor: VALOR_RESPOSTA[resposta],
       };
     }),
   }));
+}
+
+// Valor ("sim" | "av" | "nao") do grupo de radios de uma habilidade.
+function respostaSelecionada(areaKey, item) {
+  const marcado = document.querySelector(`input[name="resp-${areaKey}-${item}"]:checked`);
+  return marcado ? marcado.value : RESPOSTA_PADRAO;
 }
 
 async function gerarRelatorio(tipo) {
@@ -556,14 +701,14 @@ function baixarArquivo(blob, nomeArquivo) {
   URL.revokeObjectURL(url);
 }
 
-// Marcacoes atuais: { "<area>": { "<item>": true } } - apenas as marcadas.
+// Marcacoes atuais: { "<area>": { "<item>": "sim" | "av" | "nao" } }.
 function coletarMarcacoes() {
   const marcacoes = {};
   paineis.querySelectorAll(".card").forEach((card) => {
     const itens = {};
-    card.querySelectorAll(".realiza-check:checked").forEach((check) => {
-      const item = check.id.replace(`chk-${card.dataset.area}-`, "");
-      itens[item] = true;
+    card.querySelectorAll(".resposta-grupo").forEach((grupo) => {
+      const marcado = grupo.querySelector(".resposta-radio:checked");
+      itens[grupo.dataset.item] = marcado ? marcado.value : RESPOSTA_PADRAO;
     });
     marcacoes[card.dataset.area] = itens;
   });
@@ -573,6 +718,7 @@ function coletarMarcacoes() {
 function salvarProgresso() {
   if (!ultimaAvaliacao || !ultimaAvaliacao.avaliavel) return;
 
+  lembrarMarcacoesRenderizadas();
   const estado = {
     app: PROGRESSO_APP_ID,
     versao: PROGRESSO_VERSAO,
@@ -584,7 +730,7 @@ function salvarProgresso() {
       data_limite: inputDataLimite.value,
     },
     avaliacao: ultimaAvaliacao,
-    marcacoes: coletarMarcacoes(),
+    marcacoes: marcacoesMemoria,
   };
 
   const blob = new Blob([JSON.stringify(estado, null, 2)], { type: "application/json" });
@@ -592,12 +738,19 @@ function salvarProgresso() {
   acoesStatus.textContent = "Progresso salvo.";
 }
 
-// Aplica as marcacoes salvas aos checkboxes ja renderizados e recalcula tudo.
+// Aplica as marcacoes salvas aos grupos de radios ja renderizados e recalcula.
+// Aceita o formato atual ("sim"/"av"/"nao") e o antigo (booleano => "sim").
 function aplicarMarcacoes(marcacoes) {
   Object.entries(marcacoes || {}).forEach(([areaKey, itens]) => {
     Object.entries(itens || {}).forEach(([item, valor]) => {
-      const check = document.getElementById(`chk-${areaKey}-${item}`);
-      if (check) check.checked = Boolean(valor);
+      let resposta = valor;
+      if (valor === true) resposta = "sim";
+      else if (valor === false || valor == null) resposta = "nao";
+      if (!(resposta in VALOR_RESPOSTA)) resposta = RESPOSTA_PADRAO;
+      const radio = document.querySelector(
+        `input[name="resp-${areaKey}-${item}"][value="${resposta}"]`,
+      );
+      if (radio) radio.checked = true;
     });
   });
 
@@ -632,15 +785,55 @@ async function restaurarProgresso(arquivo) {
     radio.dispatchEvent(new Event("change"));
   }
 
+  // Substitui a memória de respostas pelas do arquivo (normalizando o
+  // formato antigo) antes de renderizar, que já as reaplica.
+  marcacoesMemoria = {};
+  Object.entries(estado.marcacoes || {}).forEach(([areaKey, itens]) => {
+    marcacoesMemoria[areaKey] = {};
+    Object.entries(itens || {}).forEach(([item, valor]) => {
+      marcacoesMemoria[areaKey][item] = normalizarResposta(valor);
+    });
+  });
+
   limparAlerta();
+  // Evita que o auto-carregamento dispare por causa das alterações acima e
+  // recarregue a avaliação por cima das marcações restauradas.
+  clearTimeout(autoCarregarTimer);
+  assinaturaCarregada = assinaturaFormulario();
   renderizar(estado.avaliacao);
-  if (estado.avaliacao.avaliavel) aplicarMarcacoes(estado.marcacoes);
 
   const quando = (estado.salvo_em || "").replace("T", " ").slice(0, 16);
   acoesStatus.textContent = `Progresso restaurado${quando ? ` (salvo em ${quando})` : ""}.`;
 }
 
+// Zera todas as respostas das áreas avaliadas (não mexe nos dados do
+// paciente). Pede confirmação porque as marcações são perdidas.
+function resetarRespostas() {
+  if (!ultimaAvaliacao || !ultimaAvaliacao.avaliavel) return;
+
+  const confirmado = window.confirm(
+    "Resetar todas as respostas das áreas avaliadas?\n\n" +
+      'Todas as marcações "Sim" e "Às vezes" voltam para "Não". ' +
+      "Os dados do paciente não são alterados.\n" +
+      "Esta ação não pode ser desfeita.",
+  );
+  if (!confirmado) return;
+
+  marcacoesMemoria = {};
+  paineis.querySelectorAll('.resposta-radio[value="nao"]').forEach((radio) => {
+    radio.checked = true;
+  });
+
+  const totalGeralEl = document.getElementById("resumo-total-geral");
+  paineis.querySelectorAll(".card").forEach((card) => atualizarSomaPainel(card));
+  atualizarTotalGeral(totalGeralEl);
+  atualizarTabelaResumo();
+  calcularIdadeDesenvolvimento();
+  acoesStatus.textContent = "Respostas resetadas — todas as marcações foram perdidas.";
+}
+
 btnSalvarProgresso.addEventListener("click", salvarProgresso);
+btnResetarRespostas.addEventListener("click", resetarRespostas);
 btnRestaurarProgresso.addEventListener("click", () => inputRestaurarProgresso.click());
 inputRestaurarProgresso.addEventListener("change", (evento) => {
   const arquivo = evento.target.files && evento.target.files[0];

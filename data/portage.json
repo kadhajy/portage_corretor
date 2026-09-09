@@ -435,6 +435,72 @@
           "habilidade": "Pede permissão para usar objetos dos outros em 75% das vezes (na maioria das vezes)..",
           "range_i": 48,
           "range_f": 59
+        },
+        {
+          "item": 73,
+          "habilidade": "Manifesta seus sentimentos.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 74,
+          "habilidade": "Brinca com 4 a 5 crianças em atividade de cooperação por 20 minutos, sem supervisão.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 75,
+          "habilidade": "Explica aos outros as regras do jogo ou atividade.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 76,
+          "habilidade": "Imita papéis de adulto.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 77,
+          "habilidade": "Colabora para a conversa durante as refeições.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 78,
+          "habilidade": "Segue regras de jogo que envolva raciocínio verbal.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 79,
+          "habilidade": "Conforta colegas quando estes estão tristes.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 80,
+          "habilidade": "Escolhe seus próprios amigos.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 81,
+          "habilidade": "Planeja e constrói, usando ferramentas simples.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 82,
+          "habilidade": "Estabelece metas para si próprio e executa atividade para atingi-las.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 83,
+          "habilidade": "Dramatiza trechos de histórias, desempenhando um papel ou utilizando fantoches.",
+          "range_i": 60,
+          "range_f": 71
         }
       ]
     },
@@ -951,6 +1017,90 @@
           "habilidade": "Diz se um som é forte ou fraco.",
           "range_i": 48,
           "range_f": 59
+        },
+        {
+          "item": 86,
+          "habilidade": "Consegue indicar alguns, muitos e vários elementos.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 87,
+          "habilidade": "Diz seu endereço.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 88,
+          "habilidade": "Diz o número de seu telefone.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 89,
+          "habilidade": "Aponta para o conjunto que tem mais, menos ou poucos elementos.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 90,
+          "habilidade": "Conta piadas simples.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 91,
+          "habilidade": "Relata experiências diárias.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 92,
+          "habilidade": "Descreve um local ou movimento: através ou entre, longe de, de / desde..., para, por cima de, até.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 93,
+          "habilidade": "Responde à pergunta \"Porque\" com uma explicação.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 94,
+          "habilidade": "Ordena e conta uma estória de 2 a 5 episódios na sequência correta.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 95,
+          "habilidade": "Define palavras.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 96,
+          "habilidade": "Responde adequadamente a pergunta \"Qual o contrário de ...\".",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 97,
+          "habilidade": "Responde a pergunta \"O que acontece se...\".",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 98,
+          "habilidade": "Usa \"ontem\" e \"amanhã\", corretamente.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 99,
+          "habilidade": "Pergunta o significado de perguntas novas ou conhecidas.",
+          "range_i": 60,
+          "range_f": 71
         }
       ]
     },
@@ -1471,8 +1621,140 @@
         {
           "item": 86,
           "habilidade": "Identifica o objeto que está colocado no meio, em primeiro e em último lugar.",
-          "range_i": 0,
-          "range_f": null
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 87,
+          "habilidade": "Conta até 20 objetos e responde adequadamente à pergunta: \"Quantos ... você contou?\"",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 88,
+          "habilidade": "Nomeia 10 numerais.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 89,
+          "habilidade": "Identifica qual a sua esquerda e qual a sua direita.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 90,
+          "habilidade": "Diz as vogais em ordem.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 91,
+          "habilidade": "Escreve seu nome com letras de forma.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 92,
+          "habilidade": "Nomeia 5 letras do alfabeto.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 93,
+          "habilidade": "Ordena objetos em sequência de comprimento e largura.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 94,
+          "habilidade": "Nomeia as letras maiúsculas do alfabeto.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 95,
+          "habilidade": "Coloca numerais de 1 a 10 na sequência correta.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 96,
+          "habilidade": "Identifica a posição de objetos em 1°, 2° e 3° lugar.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 97,
+          "habilidade": "Nomeia as letras minúsculas do alfabeto.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 98,
+          "habilidade": "Emparelha letras maiúsculas com minúsculas.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 99,
+          "habilidade": "Aponta para numerais de 1 a 25.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 100,
+          "habilidade": "Copia um losango.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 101,
+          "habilidade": "Completa um labirinto simples.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 102,
+          "habilidade": "Diz os dias da semana na ordem.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 103,
+          "habilidade": "Soma e subtrai combinações de até 3 elementos.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 104,
+          "habilidade": "Diz o mês e o dia de seu aniversário.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 105,
+          "habilidade": "Lê 10 palavras impressas.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 106,
+          "habilidade": "Prediz o que vai ocorrer.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 107,
+          "habilidade": "Aponta para objetos inteiros e partidos ao meio.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 108,
+          "habilidade": "COnta de memória de 1 a 100 (pedir que pare no 40, e continue no 80, caso não erre até o 40).",
+          "range_i": 60,
+          "range_f": 71
         }
       ]
     },
@@ -2019,6 +2301,96 @@
           "habilidade": "Amarra ou dá laços nos cordões dos sapatos.",
           "range_i": 48,
           "range_f": 59
+        },
+        {
+          "item": 91,
+          "habilidade": "É responsável por uma tarefa semanal e a executa ao ser lembrado.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 92,
+          "habilidade": "Seleciona roupas apropriadas ao clima e ocasião.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 93,
+          "habilidade": "Para no passeio, olha para ambos os lados, e atravessa a rua sem precisar ser lembrado.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 94,
+          "habilidade": "Serve-se à mesa e passa aos demais a panela de comida.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 95,
+          "habilidade": "Prepara sua própria caneca de café com leite.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 96,
+          "habilidade": "É responsável por uma tarefa diária em casa.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 97,
+          "habilidade": "Ajusta a temperatura da água para o banho.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 98,
+          "habilidade": "Prepara seu próprio lanche.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 99,
+          "habilidade": "Anda sozinho até a distância de 2 quadras de casa.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 100,
+          "habilidade": "Corta alimentos tenros com faca.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 101,
+          "habilidade": "Encontra o banheiro em local público, corretamente.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 102,
+          "habilidade": "Abre a embalagem de leite.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 103,
+          "habilidade": "Apanha uma bandeja com comida, levando-a e pondo sobre a mesa.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 104,
+          "habilidade": "Amarra os cordões em casacos com capuz.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 105,
+          "habilidade": "Aperta o cinto de segurança do automóvel.",
+          "range_i": 60,
+          "range_f": 71
         }
       ]
     },
@@ -2691,6 +3063,180 @@
           "habilidade": "Recorta e cola formas simples.",
           "range_i": 48,
           "range_f": 59
+        },
+        {
+          "item": 112,
+          "habilidade": "Escreve letras de imprensa maiúsculas, isoladas e grandes em qualquer lugar do papel.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 113,
+          "habilidade": "Anda sobre uma tábua para trás, para frente e para os lados, mantendo o equilíbrio.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 114,
+          "habilidade": "Caminha saltitando.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 115,
+          "habilidade": "Balança em um balanço iniciando e mantendo o movimento.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 116,
+          "habilidade": "Estica os dedos tocando o polegar em cada um deles.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 117,
+          "habilidade": "Copia letras maiúsculas.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 118,
+          "habilidade": "Sobe em escadas de mão ou de escorregador de 3 m.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 119,
+          "habilidade": "Bate em um prego com martelo.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 120,
+          "habilidade": "Rebate a bola à medida que anda com direção.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 121,
+          "habilidade": "Consegue colorir sem sair da margem em 95% das vezes.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 122,
+          "habilidade": "Recorta figuras sem sair mais que 6 mm da margem.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 123,
+          "habilidade": "Usa apontador de lápis.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 124,
+          "habilidade": "Copia desenhos complexos (escola, navio).",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 125,
+          "habilidade": "Rasga figuras simples de um papel.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 126,
+          "habilidade": "Dobra um papel quadrado 2x em diagonal por imitação.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 127,
+          "habilidade": "Apanha uma bola leve com uma só mão.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 128,
+          "habilidade": "Pula corda sozinho.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 129,
+          "habilidade": "Golpeia uma bola com um bastão ou pedaço de pau.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 130,
+          "habilidade": "Apanha um objeto no chão enquanto corre.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 131,
+          "habilidade": "Patina uma distância de 3 m, ou usa skate.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 132,
+          "habilidade": "Anda de bicicleta.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 133,
+          "habilidade": "Escorrega descendo um monte de areia ou terra.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 134,
+          "habilidade": "Anda ou brinca em piscina tendo água até a cintura.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 135,
+          "habilidade": "Conduz um patinete dando impulso com um só pé.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 136,
+          "habilidade": "Salta e gira em um só pé.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 137,
+          "habilidade": "Escreve seu nome com letras de forma em caderno pautado.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 138,
+          "habilidade": "Salta de uma altura de 30 cm, e cai na ponta dos pés.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 139,
+          "habilidade": "Para em um só pé sem apoio com olhos fechados por 10 segundos.",
+          "range_i": 60,
+          "range_f": 71
+        },
+        {
+          "item": 140,
+          "habilidade": "Dependura-se por 10 segundos em uma barra horizontal.",
+          "range_i": 60,
+          "range_f": 71
         }
       ]
     }

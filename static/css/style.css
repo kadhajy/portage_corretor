@@ -14,3 +14,12 @@
 .painel-total {
   font-variant-numeric: tabular-nums;
 }
+/* Grupo Sim / Às vezes / Não de cada habilidade. */
+.resposta-grupo {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.resposta-grupo .btn {
+  --bs-btn-padding-y: .25rem;
+  --bs-btn-padding-x: .6rem;
+}
