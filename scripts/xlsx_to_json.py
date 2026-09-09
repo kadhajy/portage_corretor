@@ -1,10 +1,15 @@
-"""Converte tabela_portage.xlsx em data/portage.json.
+"""Converte tabela_portage.xlsx nos dados usados pela aplicação.
 
-Utilitário opcional: a aplicação usa apenas data/portage.json. A planilha
-`tabela_portage.xlsx` não faz parte do repositório; para regenerar o JSON,
-coloque-a na raiz do projeto (cada planilha vira uma "área"; linhas sem
-conteúdo na coluna `habilidade` são ignoradas) e rode a partir da raiz:
+Gera dois arquivos com o mesmo conteúdo:
+  - data/portage.json                (referência legível)
+  - static/js/portage-data.js        (window.PORTAGE_DATA, carregado pela página)
 
+Utilitário opcional (única dependência Python do projeto). A planilha
+`tabela_portage.xlsx` não faz parte do repositório. Para regenerar,
+coloque-a na raiz (cada planilha vira uma "área"; linhas sem conteúdo na
+coluna `habilidade` são ignoradas) e rode a partir da raiz:
+
+    pip install openpyxl
     python scripts/xlsx_to_json.py
 """
 from __future__ import annotations
@@ -17,6 +22,7 @@ import openpyxl
 BASE_DIR = Path(__file__).resolve().parent.parent
 XLSX_FILE = BASE_DIR / "tabela_portage.xlsx"
 JSON_FILE = BASE_DIR / "data" / "portage.json"
+JS_FILE = BASE_DIR / "static" / "js" / "portage-data.js"
 
 # nome_da_planilha -> rótulo exibido na interface
 LABELS = {
@@ -51,12 +57,23 @@ def main() -> None:
             {"key": nome, "label": LABELS.get(nome, nome), "items": itens}
         )
 
+    conteudo_json = json.dumps(data, ensure_ascii=False, indent=2)
+
     JSON_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with JSON_FILE.open("w", encoding="utf-8") as fp:
-        json.dump(data, fp, ensure_ascii=False, indent=2)
+    JSON_FILE.write_text(conteudo_json + "\n", encoding="utf-8")
+
+    JS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    JS_FILE.write_text(
+        "/* Gerado por scripts/xlsx_to_json.py a partir de tabela_portage.xlsx. */\n"
+        f"window.PORTAGE_DATA = {conteudo_json};\n",
+        encoding="utf-8",
+    )
 
     total = sum(len(a["items"]) for a in data["areas"])
-    print(f"Gerado {JSON_FILE} com {len(data['areas'])} áreas e {total} habilidades.")
+    print(
+        f"Gerado {JSON_FILE} e {JS_FILE} "
+        f"com {len(data['areas'])} áreas e {total} habilidades."
+    )
 
 
 if __name__ == "__main__":

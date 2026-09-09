@@ -26,6 +26,7 @@ const btnRestaurarProgresso = document.getElementById("btn-restaurar-progresso")
 const inputRestaurarProgresso = document.getElementById("input-restaurar-progresso");
 const btnResetarRespostas = document.getElementById("btn-resetar-respostas");
 const acoesStatus = document.getElementById("acoes-status");
+const relatorioPrint = document.getElementById("relatorio-print");
 
 const PROGRESSO_APP_ID = "portage-avaliacao";
 const PROGRESSO_VERSAO = 2;
@@ -43,6 +44,225 @@ const NUM_FAIXAS = 6;
 const IDADE_MAX_ANOS = 6;
 // Cores das barras por área, no mesmo esquema da planilha de referência.
 const CORES_AREAS = ["#5B9BD5", "#ED7D31", "#A5A5A5", "#FFC000", "#70AD47"];
+
+// ===========================================================================
+// Regras de cálculo (aplicação estática — sem backend). Portadas do
+// antigo backend Flask.
+// ===========================================================================
+
+// Limite de idade do Guia Portage: 6 anos = 72 meses. Acima disso a avaliação
+// continua disponível, mas a página exibe um aviso.
+const MAX_MESES = 72;
+
+const FAIXAS = [
+  "0 a 1 ano",
+  "1 a 2 anos",
+  "2 a 3 anos",
+  "3 a 4 anos",
+  "4 a 5 anos",
+  "5 a 6 anos",
+];
+
+// Total de habilidades de cada faixa segundo o Guia Portage
+// (fonte: tabela_calculo_portage.xlsx, linha 10).
+const DIVISORES_IDADE_DESENV = {
+  socializacao: [28, 16, 8, 12, 9, 11],
+  linguagem: [10, 18, 30, 24, 15, 14],
+  cognicao: [14, 10, 16, 24, 22, 22],
+  autocuidados: [13, 12, 27, 15, 23, 15],
+  des_mot: [45, 18, 17, 15, 16, 29],
+};
+
+const ROTULO_RESPOSTA = { sim: "Sim", av: "Às vezes", nao: "Não" };
+
+// Habilidades por área, carregadas de data/portage.json.
+let dadosPortage = null;
+
+function faixaIndice(rangeI) {
+  return Math.max(0, Math.min(FAIXAS.length - 1, Math.floor(Number(rangeI) / 12)));
+}
+
+// "YYYY-MM-DD" -> Date à meia-noite local; lança erro se inválida.
+function parseDataISO(valor) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor || "");
+  if (!m) throw new Error("data invalida");
+  const ano = Number(m[1]);
+  const mes = Number(m[2]);
+  const dia = Number(m[3]);
+  const dt = new Date(ano, mes - 1, dia);
+  if (dt.getFullYear() !== ano || dt.getMonth() !== mes - 1 || dt.getDate() !== dia) {
+    throw new Error("data invalida");
+  }
+  return dt;
+}
+
+function dataISO(dt) {
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${mm}-${dd}`;
+}
+
+// Meses de vida completos: (ano*12 + mês), menos 1 se o dia ainda não chegou.
+function mesesDeVida(nascimento, referencia) {
+  let meses =
+    (referencia.getFullYear() - nascimento.getFullYear()) * 12 +
+    (referencia.getMonth() - nascimento.getMonth());
+  if (referencia.getDate() < nascimento.getDate()) meses -= 1;
+  return meses;
+}
+
+function filtrarAreas(meses) {
+  return dadosPortage.areas.map((area) => {
+    const habilidades = area.items
+      .filter((item) => item.habilidade && meses >= item.range_i)
+      .map((item) => ({
+        item: item.item,
+        habilidade: item.habilidade,
+        range_i: item.range_i,
+        faixa: faixaIndice(item.range_i),
+      }));
+    return {
+      key: area.key,
+      label: area.label,
+      habilidades,
+      total_habilidades: habilidades.length,
+    };
+  });
+}
+
+// Idade de desenvolvimento (anos) de uma área. `pontosPorFaixa` tem um valor
+// por faixa (Sim = 1, Às vezes = 0,5). ROUND com 0,5 para cima; limite de 6.
+function idadeDesenvolvimento(pontosPorFaixa, divisores) {
+  let bruto = 0;
+  for (let i = 0; i < divisores.length; i++) {
+    const divisor = divisores[i];
+    if (divisor) bruto += ((Number(pontosPorFaixa[i] || 0) * 12) / divisor) / 12;
+  }
+  let anos = Math.floor(bruto + 0.5);
+  anos = Math.min(anos, IDADE_MAX_ANOS);
+  return { valor_bruto: Math.round(bruto * 10000) / 10000, anos };
+}
+
+// Equivalente ao antigo POST /api/avaliacao.
+function montarAvaliacao({ nome, data_nascimento, modo, data_limite }) {
+  nome = (nome || "").trim();
+  if (!nome) throw new Error("Informe o nome do paciente.");
+
+  let nascimento;
+  try {
+    nascimento = parseDataISO(data_nascimento);
+  } catch {
+    throw new Error("Data de nascimento inválida.");
+  }
+
+  let referencia;
+  if (modo === "data_limite") {
+    try {
+      referencia = parseDataISO(data_limite);
+    } catch {
+      throw new Error("Data limite inválida.");
+    }
+  } else {
+    const hoje = new Date();
+    referencia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  }
+
+  if (referencia < nascimento) {
+    throw new Error("A data de referência é anterior à data de nascimento.");
+  }
+
+  const meses = mesesDeVida(nascimento, referencia);
+  const idadeExcedeLimite = meses >= MAX_MESES;
+
+  const dados = {
+    nome,
+    data_nascimento: dataISO(nascimento),
+    modo: modo === "data_limite" ? "data_limite" : "hoje",
+    data_referencia: dataISO(referencia),
+    meses_de_vida: meses,
+    anos: Math.floor(meses / 12),
+    meses_restantes: meses % 12,
+    idade_maxima_meses: MAX_MESES,
+    avaliavel: true,
+    idade_excede_limite: idadeExcedeLimite,
+    areas: filtrarAreas(meses),
+  };
+
+  if (idadeExcedeLimite) {
+    dados.mensagem =
+      `O paciente tem ${meses} meses de vida ` +
+      `(${Math.floor(meses / 12)} ano(s) e ${meses % 12} mês(es)), acima do limite de ` +
+      "71 meses (6 anos) previsto pelo Guia Portage. A avaliação continua " +
+      "disponível, mas os resultados podem não refletir com precisão o " +
+      "desenvolvimento nesta faixa etária. Se preferir, informe uma data " +
+      "limite para enquadrar a idade dentro do intervalo do teste.";
+  }
+
+  return dados;
+}
+
+// Equivalente ao antigo POST /api/resultado.
+function calcularResultado(pontos) {
+  const areas = [];
+  dadosPortage.areas.forEach((area) => {
+    const divisores = DIVISORES_IDADE_DESENV[area.key];
+    if (!divisores) return;
+    const brutos = pontos[area.key] || [];
+    const porFaixa = [];
+    for (let i = 0; i < FAIXAS.length; i++) porFaixa.push(Number(brutos[i]) || 0);
+    const calc = idadeDesenvolvimento(porFaixa, divisores);
+    areas.push({
+      key: area.key,
+      label: area.label,
+      pontos_por_faixa: porFaixa,
+      valor_bruto: calc.valor_bruto,
+      idade_anos: calc.anos,
+    });
+  });
+  return { faixas: FAIXAS, areas };
+}
+
+function valorResposta(resposta) {
+  return VALOR_RESPOSTA[resposta] != null ? VALOR_RESPOSTA[resposta] : 0;
+}
+
+// Números do relatório para uma área (equivalente ao antigo _calcular_area).
+function calcularAreaRelatorio(area) {
+  const habilidades = area.habilidades || [];
+  const pontos = habilidades.reduce((s, h) => s + valorResposta(h.resposta), 0);
+
+  const porFaixa = new Array(FAIXAS.length).fill(0);
+  habilidades.forEach((h) => {
+    const v = valorResposta(h.resposta);
+    const fi = Number(h.faixa) || 0;
+    if (v && fi >= 0 && fi < FAIXAS.length) porFaixa[fi] += v;
+  });
+
+  const divisores = DIVISORES_IDADE_DESENV[area.key];
+  const idade = divisores ? idadeDesenvolvimento(porFaixa, divisores).anos : null;
+
+  return {
+    key: area.key,
+    label: area.label,
+    habilidades,
+    pontos,
+    maximo: habilidades.length,
+    idade_anos: idade,
+  };
+}
+
+// Escapa texto para inserção segura no HTML do relatório.
+function esc(valor) {
+  return String(valor == null ? "" : valor).replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]),
+  );
+}
+
+function dataHojeBr() {
+  const h = new Date();
+  return `${String(h.getDate()).padStart(2, "0")}/${String(h.getMonth() + 1).padStart(2, "0")}/${h.getFullYear()}`;
+}
 
 // ---------------------------------------------------------------------------
 // MODO_TESTE: habilita os botões "Marcar/Desmarcar todas" em cada seção.
@@ -128,28 +348,24 @@ function formularioCompleto() {
   return true;
 }
 
-async function carregarAvaliacao() {
+function carregarAvaliacao() {
   limparAlerta();
-  assinaturaCarregada = assinaturaFormulario();
 
-  const corpo = {
-    nome: inputNome.value,
-    data_nascimento: inputDataNascimento.value,
-    modo: modoAtual(),
-    data_limite: inputDataLimite.value,
-  };
+  if (!dadosPortage) {
+    mostrarAlerta("Dados da avaliação não carregados (static/js/portage-data.js).", "danger");
+    return;
+  }
+
+  assinaturaCarregada = assinaturaFormulario();
 
   let resposta;
   try {
-    const req = await fetch("/api/avaliacao", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(corpo),
+    resposta = montarAvaliacao({
+      nome: inputNome.value,
+      data_nascimento: inputDataNascimento.value,
+      modo: modoAtual(),
+      data_limite: inputDataLimite.value,
     });
-    resposta = await req.json();
-    if (!req.ok) {
-      throw new Error(resposta.erro || "Não foi possível carregar a avaliação.");
-    }
   } catch (erro) {
     resumo.hidden = true;
     paineis.innerHTML = "";
@@ -459,21 +675,9 @@ function agendarCalculoIdade() {
   calculoIdadeTimer = setTimeout(calcularIdadeDesenvolvimento, 200);
 }
 
-async function calcularIdadeDesenvolvimento() {
-  const pontos = coletarPontosPorFaixa();
-  try {
-    const req = await fetch("/api/resultado", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pontos }),
-    });
-    const dados = await req.json();
-    if (!req.ok) throw new Error(dados.erro || "Falha ao calcular a idade de desenvolvimento.");
-    renderTabelaIdade(dados);
-  } catch (erro) {
-    tabelaIdade.hidden = true;
-    console.error(erro);
-  }
+function calcularIdadeDesenvolvimento() {
+  if (!dadosPortage) return;
+  renderTabelaIdade(calcularResultado(coletarPontosPorFaixa()));
 }
 
 function renderTabelaIdade(dados) {
@@ -490,7 +694,7 @@ function renderTabelaIdade(dados) {
   if (!tabelaIdade.hidden) renderGraficoIdade(dados);
 }
 
-// Fundo branco no canvas para o gráfico exportado no relatório .docx.
+// Fundo branco no canvas para o gráfico sair legível no relatório impresso.
 const fundoBrancoPlugin = {
   id: "fundoBranco",
   beforeDraw(chart) {
@@ -587,7 +791,7 @@ function renderGraficoIdade(dados) {
   if (graficoWrapper) graficoWrapper.hidden = false;
 }
 
-// --- Relatório (.docx) --------------------------------------------------
+// --- Relatório (impressão / PDF) --------------------------------------
 
 // Reúne as áreas com a resposta atual de cada habilidade (Sim / Às vezes / Não).
 function coletarAreasComMarcacao() {
@@ -614,49 +818,122 @@ function respostaSelecionada(areaKey, item) {
   return marcado ? marcado.value : RESPOSTA_PADRAO;
 }
 
-async function gerarRelatorio(tipo) {
-  if (!ultimaAvaliacao || !ultimaAvaliacao.avaliavel) return;
+// Monta o HTML do relatório dentro de #relatorio-print. `tipo`:
+// "resumido" = tabelas + gráfico; "completo" = também a lista de habilidades.
+function montarRelatorioImpresso(tipo) {
+  const dados = ultimaAvaliacao;
+  const areas = coletarAreasComMarcacao().map(calcularAreaRelatorio);
 
-  const payload = {
-    tipo,
-    paciente: {
-      nome: ultimaAvaliacao.nome,
-      data_nascimento: ultimaAvaliacao.data_nascimento,
-      data_referencia: ultimaAvaliacao.data_referencia,
-      modo: ultimaAvaliacao.modo,
-      meses_de_vida: ultimaAvaliacao.meses_de_vida,
-      anos: ultimaAvaliacao.anos,
-      meses_restantes: ultimaAvaliacao.meses_restantes,
-    },
-    areas: coletarAreasComMarcacao(),
-    grafico: graficoIdade ? graficoIdade.toBase64Image("image/png", 1) : "",
-  };
+  let dataRef = formatarData(dados.data_referencia);
+  if (dados.modo === "data_limite") dataRef += " (data limite)";
 
-  btnRelatorioResumido.disabled = true;
-  btnRelatorioCompleto.disabled = true;
-  acoesStatus.textContent = "Gerando relatório...";
+  const totalPontos = areas.reduce((s, a) => s + a.pontos, 0);
+  const totalMaximo = areas.reduce((s, a) => s + a.maximo, 0);
+  const graficoImg = graficoIdade ? graficoIdade.toBase64Image("image/png", 1) : "";
 
-  try {
-    const req = await fetch("/api/relatorio", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!req.ok) throw new Error("Falha ao gerar o relatório.");
+  const linhasResumo = areas
+    .map((a) => `<tr><td>${esc(a.label)}</td><td>${fmtNum(a.pontos)}</td><td>${a.maximo}</td></tr>`)
+    .join("");
+  const linhasIdade = areas
+    .map((a) => {
+      const anos = a.idade_anos;
+      const texto = anos == null ? "-" : `${anos} ano${anos === 1 ? "" : "s"}`;
+      return `<tr><td>${esc(a.label)}</td><td>${texto}</td></tr>`;
+    })
+    .join("");
 
-    const blob = await req.blob();
-    baixarArquivo(blob, nomeArquivoSaida("docx"));
-    acoesStatus.textContent = "Relatório gerado.";
-  } catch (erro) {
-    console.error(erro);
-    acoesStatus.textContent = erro.message;
-  } finally {
-    setAcoesHabilitadas();
+  let html = `
+    <h1>Relatório de Avaliação do Desenvolvimento Infantil</h1>
+    <p class="rel-sub"><em>Baseado no Guia Portage</em></p>
+
+    <h2>Dados do paciente</h2>
+    <ul>
+      <li>Nome: ${esc(dados.nome)}</li>
+      <li>Data de nascimento: ${formatarData(dados.data_nascimento)}</li>
+      <li>Data de referência: ${esc(dataRef)}</li>
+      <li>Idade: ${dados.anos} ano(s) e ${dados.meses_restantes} mês(es) — ${dados.meses_de_vida} meses de vida</li>
+      <li>Relatório gerado em: ${dataHojeBr()}</li>
+    </ul>`;
+
+  if (dados.idade_excede_limite) {
+    html += `<p class="rel-aviso">${esc(dados.mensagem || "")}</p>`;
   }
+
+  html += `
+    <h2>Somatório de pontos por seção</h2>
+    <table>
+      <thead><tr><th>Seção</th><th>Pontos</th><th>Máximo de pontos</th></tr></thead>
+      <tbody>
+        ${linhasResumo}
+        <tr class="rel-total"><td>Total geral</td><td>${fmtNum(totalPontos)}</td><td>${totalMaximo}</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Idade de desenvolvimento estimada</h2>
+    <p class="rel-nota">Cálculo baseado na planilha de referência do Guia Portage
+    (limite de 6 anos). É apenas um guia e não substitui a avaliação de um
+    profissional qualificado.</p>
+    <table>
+      <thead><tr><th>Seção</th><th>Idade de desenvolvimento</th></tr></thead>
+      <tbody>${linhasIdade}</tbody>
+    </table>`;
+
+  if (graficoImg) {
+    html += `<h2>Idade de desenvolvimento (gráfico)</h2>
+      <img class="rel-grafico" src="${graficoImg}" alt="Gráfico de idade de desenvolvimento">`;
+  }
+
+  if (tipo === "completo") {
+    html += `<div class="rel-quebra"></div><h2>Habilidades avaliadas</h2>`;
+    areas.forEach((a) => {
+      html += `<h3>${esc(a.label)}</h3>`;
+      if (!a.habilidades.length) {
+        html += `<p>Nenhuma habilidade se aplica a esta idade.</p>`;
+        return;
+      }
+      const linhas = a.habilidades
+        .map(
+          (h) =>
+            `<tr><td>${esc(h.item)}</td><td>${esc(h.habilidade)}</td><td>${ROTULO_RESPOSTA[h.resposta] || "Não"}</td></tr>`,
+        )
+        .join("");
+      html += `<table><thead><tr><th>Item</th><th>Habilidade</th><th>Resposta</th></tr></thead>
+        <tbody>${linhas}</tbody></table>`;
+    });
+  }
+
+  html += `
+    <div class="rel-assinatura">
+      <p>_____________________________________________</p>
+      <p>Profissional</p>
+    </div>`;
+
+  relatorioPrint.innerHTML = html;
 }
 
-btnRelatorioResumido.addEventListener("click", () => gerarRelatorio("resumido"));
-btnRelatorioCompleto.addEventListener("click", () => gerarRelatorio("completo"));
+// Abre a caixa de impressão do navegador com o relatório; o usuário escolhe
+// "Salvar como PDF". O título da aba vira o nome sugerido do arquivo.
+function imprimirRelatorio(tipo) {
+  if (!ultimaAvaliacao || !ultimaAvaliacao.avaliavel) return;
+
+  lembrarMarcacoesRenderizadas();
+  montarRelatorioImpresso(tipo);
+
+  const tituloOriginal = document.title;
+  document.title = nomeBaseSaida();
+  const restaurar = () => {
+    document.title = tituloOriginal;
+    window.removeEventListener("afterprint", restaurar);
+  };
+  window.addEventListener("afterprint", restaurar);
+
+  acoesStatus.textContent = 'Na caixa de impressão, escolha "Salvar como PDF".';
+  window.print();
+  setTimeout(restaurar, 2000);
+}
+
+btnRelatorioResumido.addEventListener("click", () => imprimirRelatorio("resumido"));
+btnRelatorioCompleto.addEventListener("click", () => imprimirRelatorio("completo"));
 
 // --- Salvar / restaurar progresso -------------------------------------
 
@@ -684,10 +961,15 @@ function dataArquivo() {
   return `${hoje.getFullYear()}${mm}${dd}`;
 }
 
+// Base do nome de saída: ava_<nome do paciente>_<yyyymmdd>
+function nomeBaseSaida() {
+  const nome = ultimaAvaliacao ? ultimaAvaliacao.nome : "";
+  return `ava_${nomePacienteLimpo(nome)}_${dataArquivo()}`;
+}
+
 // Padrão: ava_<nome do paciente>_<yyyymmdd>.<extensao>
 function nomeArquivoSaida(extensao) {
-  const nome = ultimaAvaliacao ? ultimaAvaliacao.nome : "";
-  return `ava_${nomePacienteLimpo(nome)}_${dataArquivo()}.${extensao}`;
+  return `${nomeBaseSaida()}.${extensao}`;
 }
 
 function baixarArquivo(blob, nomeArquivo) {
@@ -840,3 +1122,18 @@ inputRestaurarProgresso.addEventListener("change", (evento) => {
   if (arquivo) restaurarProgresso(arquivo);
   evento.target.value = "";
 });
+
+// --- Dados da avaliação -----------------------------------------------
+// Vêm embutidos em static/js/portage-data.js (window.PORTAGE_DATA), carregado
+// antes deste script. Assim a página funciona até aberta direto do disco.
+if (window.PORTAGE_DATA && Array.isArray(window.PORTAGE_DATA.areas)) {
+  dadosPortage = window.PORTAGE_DATA;
+  // Se o formulário já estiver preenchido (ex.: restaurou o progresso), carrega.
+  if (formularioCompleto()) carregarAvaliacao();
+} else {
+  mostrarAlerta(
+    "Dados da avaliação não encontrados (static/js/portage-data.js). " +
+      "Verifique se o arquivo foi publicado junto com a página.",
+    "danger",
+  );
+}

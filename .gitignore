@@ -1,29 +1,25 @@
-**out
-**/out
-Procedimentos.xlsx
-
+# Dependências e caches
+.venv/
+venv/
 __pycache__/
 *.py[cod]
+node_modules/
 
-venv/
-.venv/
-
-.pytest_cache/
-.coverage
-htmlcov/
-
-build/
-dist/
-*.egg-info/
-
+# Ambiente e editores
 .env
-
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
-
+# Arquivos locais, fora do repositório
 notes.md
 prompt.md
-tabela_calculo_portage.xlsx
+Procedimentos.xlsx
+
+# Planilhas de referência (não versionadas)
 tabela_portage.xlsx
+tabela_calculo_portage.xlsx
+
+# Instruções locais do Claude Code
 CLAUDE.md

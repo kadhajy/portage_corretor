@@ -23,3 +23,90 @@
   --bs-btn-padding-y: .25rem;
   --bs-btn-padding-x: .6rem;
 }
+
+/* --- Relatório impressão / PDF ------------------------------------------ */
+/* Na tela o container fica oculto; só a impressão o mostra. */
+#relatorio-print {
+  display: none;
+}
+
+@media print {
+  body > nav,
+  body > main {
+    display: none !important;
+  }
+  #relatorio-print {
+    display: block !important;
+    color: #000;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  #relatorio-print h1 {
+    font-size: 1.4rem;
+    margin: 0 0 .2rem;
+  }
+  #relatorio-print h2 {
+    font-size: 1.05rem;
+    margin: 1.1rem 0 .35rem;
+  }
+  #relatorio-print h3 {
+    font-size: .95rem;
+    margin: .8rem 0 .25rem;
+  }
+  #relatorio-print .rel-sub {
+    margin: 0 0 1rem;
+    color: #555;
+  }
+  #relatorio-print ul {
+    margin: 0 0 .5rem;
+    padding-left: 1.2rem;
+  }
+  #relatorio-print table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: .6rem;
+  }
+  #relatorio-print th,
+  #relatorio-print td {
+    border: 1px solid #999;
+    padding: 3px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+  #relatorio-print .rel-total td {
+    font-weight: bold;
+  }
+  #relatorio-print .rel-nota {
+    font-size: .78rem;
+    color: #444;
+  }
+  #relatorio-print .rel-aviso {
+    border: 1px solid #c60;
+    background: #fff3cd;
+    padding: 6px 8px;
+    font-size: .82rem;
+  }
+  #relatorio-print .rel-grafico {
+    max-width: 100%;
+    height: auto;
+  }
+  #relatorio-print .rel-quebra {
+    break-before: page;
+  }
+  #relatorio-print .rel-assinatura {
+    margin-top: 3rem;
+    text-align: center;
+  }
+  #relatorio-print .rel-assinatura p {
+    margin: .15rem 0;
+  }
+  #relatorio-print table,
+  #relatorio-print img,
+  #relatorio-print h2,
+  #relatorio-print h3 {
+    break-inside: avoid;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}
