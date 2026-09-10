@@ -24,7 +24,10 @@ const btnRelatorioCompleto = document.getElementById("btn-relatorio-completo");
 const btnSalvarProgresso = document.getElementById("btn-salvar-progresso");
 const btnRestaurarProgresso = document.getElementById("btn-restaurar-progresso");
 const inputRestaurarProgresso = document.getElementById("input-restaurar-progresso");
-const btnResetarRespostas = document.getElementById("btn-resetar-respostas");
+const btnResetar = document.getElementById("btn-resetar");
+const modalResetarEl = document.getElementById("modal-resetar");
+const checkResetarPaciente = document.getElementById("modal-resetar-paciente");
+const btnResetarConfirmar = document.getElementById("modal-resetar-confirmar");
 const acoesStatus = document.getElementById("acoes-status");
 const relatorioPrint = document.getElementById("relatorio-print");
 
@@ -404,7 +407,6 @@ function setAcoesHabilitadas() {
   btnSalvarProgresso.disabled = !ok;
   btnRelatorioResumido.disabled = !ok;
   btnRelatorioCompleto.disabled = !ok;
-  btnResetarRespostas.disabled = !ok;
 }
 
 function renderizar(dados, { preservarMarcacoes = true } = {}) {
@@ -1164,17 +1166,9 @@ async function restaurarProgresso(arquivo) {
 }
 
 // Zera todas as respostas das áreas avaliadas (não mexe nos dados do
-// paciente). Pede confirmação porque as marcações são perdidas.
+// paciente). A confirmação é feita pelo modal #modal-resetar.
 function resetarRespostas() {
   if (!ultimaAvaliacao || !ultimaAvaliacao.avaliavel) return;
-
-  const confirmado = window.confirm(
-    "Resetar todas as respostas das áreas avaliadas?\n\n" +
-      'Todas as marcações "Sim" e "Às vezes" voltam para "Não". ' +
-      "Os dados do paciente não são alterados.\n" +
-      "Esta ação não pode ser desfeita.",
-  );
-  if (!confirmado) return;
 
   marcacoesMemoria = {};
   paineis.querySelectorAll('.resposta-radio[value="nao"]').forEach((radio) => {
@@ -1189,8 +1183,58 @@ function resetarRespostas() {
   acoesStatus.textContent = "Respostas resetadas — todas as marcações foram perdidas.";
 }
 
+// Apaga tudo: dados do paciente (nome, data de nascimento, data de
+// avaliação), o modo de referência e todas as marcações. Deixa a página
+// como recém-aberta. A confirmação é feita pelo modal #modal-resetar.
+function resetarTeste() {
+  clearTimeout(autoCarregarTimer);
+  form.reset();
+  wrapperDataLimite.hidden = true;
+  inputDataLimite.required = false;
+
+  marcacoesMemoria = {};
+  ultimaAvaliacao = null;
+  assinaturaCarregada = null;
+
+  paineis.innerHTML = "";
+  resumo.hidden = true;
+  avisoIdade.hidden = true;
+  tabelaResumo.hidden = true;
+  tabelaResumoCorpo.innerHTML = "";
+  tabelaIdade.hidden = true;
+  tabelaIdadeCorpo.innerHTML = "";
+  tabelaIdadePaciente.textContent = "";
+  if (graficoIdade) {
+    graficoIdade.destroy();
+    graficoIdade = null;
+  }
+  if (graficoWrapper) graficoWrapper.hidden = true;
+  relatorioPrint.innerHTML = "";
+
+  limparAlerta();
+  setAcoesHabilitadas();
+  acoesStatus.textContent = "Teste resetado — todos os dados foram apagados.";
+}
+
 btnSalvarProgresso.addEventListener("click", salvarProgresso);
-btnResetarRespostas.addEventListener("click", resetarRespostas);
+
+// Botão "Resetar": abre o modal de confirmação. A checkbox "Resetar dados
+// do paciente" começa sempre desmarcada; marcada, limpa tudo (dados do
+// paciente + respostas); desmarcada, só as respostas.
+let modalResetar = null;
+btnResetar.addEventListener("click", () => {
+  checkResetarPaciente.checked = false;
+  if (!modalResetar && window.bootstrap) {
+    modalResetar = window.bootstrap.Modal.getOrCreateInstance(modalResetarEl);
+  }
+  if (modalResetar) modalResetar.show();
+});
+btnResetarConfirmar.addEventListener("click", () => {
+  if (checkResetarPaciente.checked) resetarTeste();
+  else resetarRespostas();
+  if (modalResetar) modalResetar.hide();
+});
+
 btnRestaurarProgresso.addEventListener("click", () => inputRestaurarProgresso.click());
 inputRestaurarProgresso.addEventListener("change", (evento) => {
   const arquivo = evento.target.files && evento.target.files[0];

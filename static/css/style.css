@@ -32,7 +32,8 @@
 
 @media print {
   body > nav,
-  body > main {
+  body > main,
+  #modal-resetar {
     display: none !important;
   }
   #relatorio-print {
