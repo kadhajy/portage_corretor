@@ -407,10 +407,12 @@ function setAcoesHabilitadas() {
   btnResetarRespostas.disabled = !ok;
 }
 
-function renderizar(dados) {
+function renderizar(dados, { preservarMarcacoes = true } = {}) {
   // Guarda as respostas atuais antes de recriar os painéis, para não perder
   // marcações quando a avaliação é recarregada (ex.: mudança de data limite).
-  lembrarMarcacoesRenderizadas();
+  // Na restauração de um progresso isso é pulado: `marcacoesMemoria` já é a
+  // memória vinda do arquivo e não deve ser sobrescrita pelos painéis na tela.
+  if (preservarMarcacoes) lembrarMarcacoesRenderizadas();
 
   ultimaAvaliacao = dados;
   paineis.innerHTML = "";
@@ -1145,7 +1147,7 @@ async function restaurarProgresso(arquivo) {
   // recarregue a avaliação por cima das marcações restauradas.
   clearTimeout(autoCarregarTimer);
   assinaturaCarregada = assinaturaFormulario();
-  renderizar(estado.avaliacao);
+  renderizar(estado.avaliacao, { preservarMarcacoes: false });
 
   const quando = (estado.salvo_em || "").replace("T", " ").slice(0, 16);
   acoesStatus.textContent = `Progresso restaurado${quando ? ` (salvo em ${quando})` : ""}.`;
