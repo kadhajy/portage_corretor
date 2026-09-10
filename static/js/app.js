@@ -872,8 +872,7 @@ function montarRelatorioImpresso(tipo) {
   const dados = ultimaAvaliacao;
   const areas = coletarAreasComMarcacao().map(calcularAreaRelatorio);
 
-  let dataRef = formatarData(dados.data_referencia);
-  if (dados.modo === "data_limite") dataRef += " (data limite)";
+  const dataRef = formatarData(dados.data_referencia);
 
   const totalPontos = areas.reduce((s, a) => s + a.pontos, 0);
   const totalMaximo = areas.reduce((s, a) => s + a.maximo, 0);
