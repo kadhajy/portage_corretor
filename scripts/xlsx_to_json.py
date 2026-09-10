@@ -1,8 +1,6 @@
 """Converte tabela_portage.xlsx nos dados usados pela aplicação.
 
-Gera dois arquivos com o mesmo conteúdo:
-  - data/portage.json                (referência legível)
-  - static/js/portage-data.js        (window.PORTAGE_DATA, carregado pela página)
+Gera `data/portage.json`, que a página carrega via fetch.
 
 Utilitário opcional (única dependência Python do projeto). A planilha
 `tabela_portage.xlsx` não faz parte do repositório. Para regenerar,
@@ -22,7 +20,6 @@ import openpyxl
 BASE_DIR = Path(__file__).resolve().parent.parent
 XLSX_FILE = BASE_DIR / "tabela_portage.xlsx"
 JSON_FILE = BASE_DIR / "data" / "portage.json"
-JS_FILE = BASE_DIR / "static" / "js" / "portage-data.js"
 
 # nome_da_planilha -> rótulo exibido na interface
 LABELS = {
@@ -62,16 +59,9 @@ def main() -> None:
     JSON_FILE.parent.mkdir(parents=True, exist_ok=True)
     JSON_FILE.write_text(conteudo_json + "\n", encoding="utf-8")
 
-    JS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    JS_FILE.write_text(
-        "/* Gerado por scripts/xlsx_to_json.py a partir de tabela_portage.xlsx. */\n"
-        f"window.PORTAGE_DATA = {conteudo_json};\n",
-        encoding="utf-8",
-    )
-
     total = sum(len(a["items"]) for a in data["areas"])
     print(
-        f"Gerado {JSON_FILE} e {JS_FILE} "
+        f"Gerado {JSON_FILE} "
         f"com {len(data['areas'])} áreas e {total} habilidades."
     )
 

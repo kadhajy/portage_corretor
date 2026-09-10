@@ -349,7 +349,7 @@ function carregarAvaliacao() {
   limparAlerta();
 
   if (!dadosPortage) {
-    mostrarAlerta("Dados da avaliação não carregados (static/js/portage-data.js).", "danger");
+    mostrarAlerta("Dados da avaliação ainda não carregados (data/portage.json).", "danger");
     return;
   }
 
@@ -1073,8 +1073,12 @@ function salvarProgresso() {
     formulario: {
       nome: document.getElementById("nome").value,
       data_nascimento: document.getElementById("data_nascimento").value,
-      modo: form.querySelector('input[name="modo"]:checked').value,
-      data_limite: inputDataLimite.value,
+      // A data de avaliação é sempre gravada de forma explícita, inclusive
+      // no modo "hoje" (que serve só para agilizar o preenchimento). Sem
+      // isso, restaurar o backup dias depois recalcularia a idade para a
+      // data da restauração em vez da data em que a avaliação foi feita.
+      modo: "data_limite",
+      data_limite: ultimaAvaliacao.data_referencia,
     },
     avaliacao: ultimaAvaliacao,
     marcacoes: marcacoesMemoria,
@@ -1125,8 +1129,15 @@ async function restaurarProgresso(arquivo) {
   const f = estado.formulario || {};
   document.getElementById("nome").value = f.nome || "";
   document.getElementById("data_nascimento").value = f.data_nascimento || "";
-  inputDataLimite.value = f.data_limite || "";
-  const radio = document.getElementById(f.modo === "data_limite" ? "modo-limite" : "modo-hoje");
+
+  // A data de avaliação vem congelada no backup. Formatos novos gravam-na
+  // em formulario.data_limite; backups antigos feitos no modo "hoje" não a
+  // gravavam, então usa avaliacao.data_referencia. Restaura-se sempre como
+  // "data limite" para que um recálculo posterior não use a data de hoje.
+  const dataAvaliacao =
+    f.data_limite || (estado.avaliacao && estado.avaliacao.data_referencia) || "";
+  inputDataLimite.value = dataAvaliacao;
+  const radio = document.getElementById(dataAvaliacao ? "modo-limite" : "modo-hoje");
   if (radio) {
     radio.checked = true;
     radio.dispatchEvent(new Event("change"));
@@ -1189,16 +1200,26 @@ inputRestaurarProgresso.addEventListener("change", (evento) => {
 });
 
 // --- Dados da avaliação -----------------------------------------------
-// Vêm embutidos em static/js/portage-data.js (window.PORTAGE_DATA), carregado
-// antes deste script. Assim a página funciona até aberta direto do disco.
-if (window.PORTAGE_DATA && Array.isArray(window.PORTAGE_DATA.areas)) {
-  dadosPortage = window.PORTAGE_DATA;
-  // Se o formulário já estiver preenchido (ex.: restaurou o progresso), carrega.
-  if (formularioCompleto()) carregarAvaliacao();
-} else {
-  mostrarAlerta(
-    "Dados da avaliação não encontrados (static/js/portage-data.js). " +
-      "Verifique se o arquivo foi publicado junto com a página.",
-    "danger",
-  );
-}
+// Carregados de data/portage.json. A página precisa ser servida por HTTP
+// (ex.: python3 -m http.server); aberta como file:// o fetch é bloqueado
+// pela política de segurança do navegador.
+fetch("data/portage.json")
+  .then((resp) => {
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return resp.json();
+  })
+  .then((dados) => {
+    if (!dados || !Array.isArray(dados.areas)) {
+      throw new Error("formato inesperado");
+    }
+    dadosPortage = dados;
+    // Se o formulário já estiver preenchido (ex.: restaurou o progresso), carrega.
+    if (formularioCompleto()) carregarAvaliacao();
+  })
+  .catch((erro) => {
+    mostrarAlerta(
+      `Não foi possível carregar os dados da avaliação (data/portage.json): ${erro.message}. ` +
+        "Sirva a página por HTTP em vez de abrir o arquivo direto.",
+      "danger",
+    );
+  });

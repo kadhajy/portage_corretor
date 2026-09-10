@@ -38,9 +38,15 @@ cada área devem ser avaliadas, soma a pontuação de cada resposta
 
 ## Rodar localmente
 
-Basta abrir `index.html` no navegador — os dados da avaliação estão
-embutidos em `static/js/portage-data.js`, então não é preciso servidor.
-Se preferir servir por HTTP: `python3 -m http.server 8000`.
+Sirva a pasta por HTTP e abra no navegador:
+
+```bash
+python3 -m http.server 8000   # depois abra http://localhost:8000
+```
+
+Abrir `index.html` direto do disco (`file://`) **não funciona**: a página
+carrega `data/portage.json` via `fetch`, e o navegador bloqueia essa
+requisição fora de um servidor.
 
 ## Publicar no GitHub Pages
 
@@ -85,28 +91,23 @@ onde a data é a data limite (quando usada) ou a data de geração.
 
 ## Dados da avaliação
 
-As habilidades ficam em dois arquivos com o mesmo conteúdo:
+As habilidades ficam em `data/portage.json`, que a página carrega via
+`fetch`.
 
-- `static/js/portage-data.js` (`window.PORTAGE_DATA`) — é o que a página usa.
-- `data/portage.json` — mesma base, mantida como referência legível e para
-  quem preferir carregá-la via `fetch`.
-
-Foram gerados de uma planilha `tabela_portage.xlsx` (5 planilhas, uma por
+Foi gerado de uma planilha `tabela_portage.xlsx` (5 planilhas, uma por
 área; colunas `item`, `habilidade`, `range_i`, `range_f`, `realiza`; linhas
 com `habilidade` em branco são ignoradas), que **não faz parte do
 repositório**.
 
 Para alterar as habilidades, coloque uma `tabela_portage.xlsx` nesse formato
-na raiz do projeto e regenere os dois arquivos:
+na raiz do projeto e regenere o arquivo:
 
 ```bash
 pip install openpyxl        # única dependência Python
 python scripts/xlsx_to_json.py
 ```
 
-Se editar `data/portage.json` na mão, replique a mudança em
-`static/js/portage-data.js` (é `window.PORTAGE_DATA = ` seguido do mesmo
-JSON).
+`data/portage.json` também pode ser editado à mão.
 
 Os divisores usados no cálculo da idade de desenvolvimento vêm de
 `tabela_calculo_portage.xlsx` e estão fixos em `DIVISORES_IDADE_DESENV`
@@ -118,10 +119,9 @@ Os divisores usados no cálculo da idade de desenvolvimento vêm de
 index.html                  # página única (raiz — servida pelo GitHub Pages)
 .nojekyll                    # publica os arquivos sem processamento Jekyll
 static/js/app.js             # regras de cálculo + interface + relatórios
-static/js/portage-data.js    # habilidades por área (window.PORTAGE_DATA)
 static/css/style.css         # ajustes visuais + estilos de impressão
-data/portage.json            # mesma base em JSON (referência / uso via fetch)
-scripts/xlsx_to_json.py      # regenera os dois arquivos a partir do .xlsx (requer openpyxl)
+data/portage.json            # habilidades por área (carregado via fetch)
+scripts/xlsx_to_json.py      # regenera data/portage.json a partir do .xlsx (requer openpyxl)
 tabela_calculo_portage.xlsx  # molde do cálculo da idade de desenvolvimento
 ```
 
