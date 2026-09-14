@@ -1621,8 +1621,8 @@
         {
           "item": 86,
           "habilidade": "Identifica o objeto que está colocado no meio, em primeiro e em último lugar.",
-          "range_i": 60,
-          "range_f": 71
+          "range_i": 48,
+          "range_f": 59
         },
         {
           "item": 87,
