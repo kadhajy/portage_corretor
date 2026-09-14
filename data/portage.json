@@ -307,8 +307,8 @@
         {
           "item": 51,
           "habilidade": "Demonstra entender sentimentos, expressando-se (amor, alegria, enfado, tristeza).",
-          "range_i": 36,
-          "range_f": 47
+          "range_i": 24,
+          "range_f": 35
         },
         {
           "item": 52,

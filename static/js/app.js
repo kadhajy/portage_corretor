@@ -71,8 +71,8 @@ const FAIXAS = [
 // Total de habilidades de cada faixa segundo o Guia Portage
 // (fonte: tabela_calculo_portage.xlsx, linha 10).
 const DIVISORES_IDADE_DESENV = {
-  socializacao: [28, 16, 8, 12, 9, 11],
-  linguagem: [10, 18, 30, 24, 15, 14],
+  socializacao: [28, 15, 8, 12, 9, 11],
+  linguagem: [10, 18, 30, 12, 15, 14],
   cognicao: [14, 10, 16, 24, 22, 22],
   autocuidados: [13, 12, 27, 15, 23, 15],
   des_mot: [45, 18, 17, 15, 16, 29],
@@ -534,7 +534,6 @@ function criarPainel(area, totalGeralEl) {
     btnTeste.type = "button";
     btnTeste.className = "btn btn-sm btn-outline-danger test-only";
     btnTeste.textContent = "Marcar todas";
-    btnTeste.hidden = true; // ação mantida, mas invisível
 
     btnTeste.addEventListener("click", () => {
       const marcar = btnTeste.textContent === "Marcar todas";
