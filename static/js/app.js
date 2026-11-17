@@ -43,6 +43,13 @@ function fmtNum(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
 }
 
+// Idade em anos decimais -> "2a 3m" (anos e meses, meses arredondados).
+// Só para exibição; os cálculos continuam em anos decimais.
+function fmtAnosMeses(anosDecimais) {
+  const totalMeses = Math.round(Number(anosDecimais || 0) * 12);
+  return `${Math.floor(totalMeses / 12)}a ${totalMeses % 12}m`;
+}
+
 const NUM_FAIXAS = 6;
 const IDADE_MAX_ANOS = 6;
 // Uma cor por área nas barras de "Idade de desenvolvimento". Linguagem
@@ -706,7 +713,7 @@ const fundoBrancoPlugin = {
   },
 };
 
-// Rótulo com o valor (1 casa) acima das barras de todos os conjuntos
+// Rótulo com o valor (em anos e meses, ex.: "2a 3m") acima das barras de todos os conjuntos
 // ("Idade de desenvolvimento" e "Idade atual do paciente").
 const rotuloValoresPlugin = {
   id: "rotuloValores",
@@ -722,7 +729,7 @@ const rotuloValoresPlugin = {
       meta.data.forEach((barra, i) => {
         const valor = dataset.data[i];
         if (valor == null) return;
-        ctx.fillText(Number(valor).toFixed(1), barra.x, barra.y - 4);
+        ctx.fillText(fmtAnosMeses(valor), barra.x, barra.y - 4);
       });
     });
     ctx.restore();
@@ -734,10 +741,12 @@ const rotuloValoresPlugin = {
 // paciente como referência; eixo Y de 0 a 6 anos.
 function configGraficoIdade(dados, paraImpressao) {
   const labels = dados.areas.map((a) => a.label);
-  const desenvolvimento = dados.areas.map((a) => Math.round(a.valor_bruto * 10) / 10);
+  // Valores sem arredondar: a conversão para anos e meses é feita só nos
+  // rótulos/tooltip (fmtAnosMeses), para não perder meses no arredondamento.
+  const desenvolvimento = dados.areas.map((a) => a.valor_bruto);
 
   const idadeAtualAnos = ultimaAvaliacao
-    ? Math.min(IDADE_MAX_ANOS, Math.round((ultimaAvaliacao.meses_de_vida / 12) * 10) / 10)
+    ? Math.min(IDADE_MAX_ANOS, ultimaAvaliacao.meses_de_vida / 12)
     : 0;
   const idadeAtualSerie = labels.map(() => idadeAtualAnos);
 
@@ -803,7 +812,7 @@ function configGraficoIdade(dados, paraImpressao) {
         },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(1)} ano(s)`,
+            label: (ctx) => `${ctx.dataset.label}: ${fmtAnosMeses(ctx.parsed.y)}`,
           },
         },
       },
